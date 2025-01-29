@@ -97,10 +97,26 @@ void Solver::read_cnf(ifstream& in) {
 		s.insert(i);
 	}	
 	if (VarDecHeuristic == VAR_DEC_HEURISTIC::MINISAT) reset_iterators();
-	cout << "Read " << cnf_size() << " clauses in " << cpuTime() - begin_time << " secs." << endl << "Solving..." << endl;
+	read_cnf_time = cpuTime() - begin_time;
+	cout << "Read " << cnf_size() << " clauses in " << read_cnf_time << " secs." << endl << "Preprocessing..." << endl;
 }
 
 #pragma endregion readCNF
+
+/******************  Preprocessing ******************************/
+#pragma region preprocessing
+
+void Solver::preprocessBVA() {
+	if (verbose_now()) cout << "preprocessBVA" << endl;
+	
+	// TODO: Implement function here!
+
+	preprocess_time = cpuTime() - read_cnf_time;
+	cout << "Preprocessing done in " << preprocess_time << " secs." << endl << "Solving..." << endl;
+	return;
+}
+
+#pragma endregion preprocessing
 
 /******************  Solving ******************************/
 #pragma region solving
@@ -636,7 +652,8 @@ int main(int argc, char** argv){
 	cout << "Reading CNF from " << argv[argc - 1 - with_proof] << endl;
 	S.read_cnf(in);
 	in.close();
-	
+	if (preprocess)
+		S.preprocessBVA();
 	S.solve();	
 
 	return 0;

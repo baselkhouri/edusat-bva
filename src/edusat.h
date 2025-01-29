@@ -36,7 +36,10 @@ typedef vector<Lit> trail_t;
 #define Assignment_file "assignment.txt"
 
 int verbose = 0;
+int preprocess = 0;
 double begin_time;
+double read_cnf_time;
+double preprocess_time;
 double timeout = 0.0;
 
 
@@ -61,6 +64,7 @@ VAL_DEC_HEURISTIC ValDecHeuristic = VAL_DEC_HEURISTIC::PHASESAVING;
 
 unordered_map<string, option*> options = {
 	{"v",           new intoption(&verbose, 0, 2, "Verbosity level")},
+	{"p", 		 	new intoption(&preprocess, 0, 1, "{0: Don't preprocess cnf, 1: preprocess cnf (BVA)}")},
 	{"timeout",     new doubleoption(&timeout, 0.0, 36000.0, "Timeout in seconds")},
 	{"valdh",       new intoption((int*)&ValDecHeuristic, 0, 1, "{0: phase-saving, 1: literal-score}")}
 };
@@ -299,6 +303,7 @@ public:
 
 	SolverState _solve();
 	void solve();
+	void preprocessBVA();
 
 	
 	
