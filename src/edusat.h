@@ -119,7 +119,7 @@ void AssertCheck(bool cond, string func_name, int line, string msg = "") {
 }
 
 
-bool match(ifstream& in, char* str) {
+bool match(ifstream& in, const char* str) {
     for (; *str != '\0'; ++str)
         if (*str != in.get())
             return false;
@@ -269,15 +269,15 @@ public:
 		nvars(0), nclauses(0), num_learned(0), num_decisions(0), num_assignments(0), 
 		num_restarts(0), m_var_inc(1.0), qhead(0), 
 		restart_threshold(Restart_lower), restart_lower(Restart_lower), 
-		restart_upper(Restart_upper), restart_multiplier(Restart_multiplier)	 {};
+		restart_upper(Restart_upper), restart_multiplier(Restart_multiplier) {};
 	
 	// service functions
 	inline LitState lit_state(Lit l) {
 		VarState var_state = state[l2v(l)];
-		return var_state == VarState::V_UNASSIGNED ? LitState::L_UNASSIGNED : (Neg(l) && var_state == VarState::V_FALSE || !Neg(l) && var_state == VarState::V_TRUE) ? LitState::L_SAT : LitState::L_UNSAT;
+		return var_state == VarState::V_UNASSIGNED ? LitState::L_UNASSIGNED : ((Neg(l) && var_state == VarState::V_FALSE) || (!Neg(l) && var_state == VarState::V_TRUE)) ? LitState::L_SAT : LitState::L_UNSAT;
 	}
 	inline LitState lit_state(Lit l, VarState var_state) {
-		return var_state == VarState::V_UNASSIGNED ? LitState::L_UNASSIGNED : (Neg(l) && var_state == VarState::V_FALSE || !Neg(l) && var_state == VarState::V_TRUE) ? LitState::L_SAT : LitState::L_UNSAT;
+		return var_state == VarState::V_UNASSIGNED ? LitState::L_UNASSIGNED : ((Neg(l) && var_state == VarState::V_FALSE) || (!Neg(l) && var_state == VarState::V_TRUE)) ? LitState::L_SAT : LitState::L_UNSAT;
 	}
 	void read_cnf(ifstream& in);
 
