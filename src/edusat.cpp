@@ -81,10 +81,10 @@ void Solver::read_cnf(ifstream& in) {
 						Abort("UNSAT (conflicting unaries for var " + to_string(l2v(l)) +")", 0);
 					}
 				assert_lit(l);
-				add_unary_clause(l);
+				add_unary_clause(l, true /*original*/);
 				break; // unary clause. Note we do not add it as a clause. 
 			}
-			default: add_clause(c, 0, 1);
+			default: add_clause(c, 0, 1, true /*original*/);
 			}
 			c.reset();
 			s.clear();
@@ -196,7 +196,7 @@ void Solver::bumpLitScore(int lit_idx) {
 	LitScore[lit_idx]++;
 }
 
-void Solver::add_clause(Clause& c, int l, int r) {	
+void Solver::add_clause(Clause& c, int l, int r, bool original) {
 	Assert(c.size() > 1) ;
 	c.lw_set(l);
 	c.rw_set(r);
@@ -206,10 +206,14 @@ void Solver::add_clause(Clause& c, int l, int r) {
 	watches[c.lit(l)].push_back(loc); 
 	watches[c.lit(r)].push_back(loc);
 	cnf.push_back(c);
+	if (proof_tracer)
+		proof_tracer->notify_added_clause(c.get_raw_copy(), original);
 }
 
-void Solver::add_unary_clause(Lit l) {		
+void Solver::add_unary_clause(Lit l, bool original) {
 	unaries.push_back(l);
+	if (proof_tracer)
+		proof_tracer->notify_added_clause({l2rl(l)}, original);
 }
 
 int Solver :: getVal(Var v) {
@@ -358,7 +362,7 @@ SolverState Solver::BCP() {
 			switch (res) {
 			case ClauseState::C_UNSAT: { // conflict				
 				if (verbose_now()) print_state();
-				if (dl == 0) return SolverState::UNSAT;				
+				if (dl == 0) return SolverState::UNSAT;
 				conflicting_clause_idx = *it;  // this will also break the loop
 				 int dist = distance(it, watches[NegatedLit].rend()) - 1; // # of entries in watches[NegatedLit] that were not yet processed when we hit this conflict. 
 				// Copying the remaining watched clauses:
@@ -595,7 +599,11 @@ SolverState Solver::_solve() {
 		if (timeout > 0 && cpuTime() - begin_time > timeout) return SolverState::TIMEOUT;
 		while (true) {
 			res = BCP();
-			if (res == SolverState::UNSAT) return res;
+			if (res == SolverState::UNSAT) {
+				if (proof_tracer)
+					proof_tracer->notify_added_clause({}, false);
+				return res;
+			}
 			if (res == SolverState::CONFLICT)
 				backtrack(analyze(cnf[conflicting_clause_idx]));
 			else break;
@@ -612,13 +620,23 @@ SolverState Solver::_solve() {
 
 int main(int argc, char** argv){
 	begin_time = cpuTime();
-	parse_options(argc, argv);
-	
-	ifstream in (argv[argc - 1]);
-	if (!in.good()) Abort("cannot read input file", 1);	
-	cout << "This is edusat" << endl;
-	S.read_cnf(in);		
+	cout << "======================================================" << endl;
+	cout << "This is hacked edusat by Basel and Thomas :)" << endl;
+	cout << "======================================================" << endl << endl;
+	bool with_proof;
+	parse_options(argc, argv, with_proof);
+	ifstream in (argv[argc - 1 - with_proof]);
+	if (!in.good())
+		Abort("cannot read input file", 1);
+	if (with_proof) {
+		std::string out(argv[argc - with_proof]);
+		S.set_proof_file(out);
+		cout << "Dumping proof to " << argv[argc - 1] << endl << endl;
+	}
+	cout << "Reading CNF from " << argv[argc - 1 - with_proof] << endl;
+	S.read_cnf(in);
 	in.close();
+	
 	S.solve();	
 
 	return 0;

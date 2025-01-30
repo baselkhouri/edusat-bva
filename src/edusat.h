@@ -13,12 +13,14 @@
 #include <cassert>
 #include <ctime>
 #include "options.h"
+#include "proof.h"
 using namespace std;
 
 typedef int Var;
 typedef int Lit;
 typedef vector<Lit> clause_t;
 typedef clause_t::iterator clause_it;
+typedef clause_t::const_iterator clause_cit;
 typedef vector<Lit> trail_t;
 
 #define Assert(exp) AssertCheck(exp, __func__, __LINE__)
@@ -186,6 +188,12 @@ public:
 			cout << " ";
 		};
 	}
+	vector<int> get_raw_copy() const {
+		vector<int> lits;
+		for (clause_cit it = c.cbegin(); it != c.cend(); ++it)
+			lits.push_back(l2rl(*it));
+		return lits;
+	}
 };
 
 class Solver {
@@ -200,8 +208,15 @@ class Solver {
 	vector<int> antecedent; // var => clause index in the cnf vector. For variables that their value was assigned in BCP, this is the clause that gave this variable its value. 
 	vector<bool> marked;	// var => seen during analyze()
 	vector<int> dlevel; // var => decision level in which this variable was assigned its value. 
-	vector<int> conflicts_at_dl; // decision level => # of conflicts under it. Used for local restarts. 
+	vector<int> conflicts_at_dl; // decision level => # of conflicts under it. Used for local restarts.
 
+	ProofTracer *proof_tracer;
+public:
+	inline void set_proof_file(std::string f) {
+		proof_tracer = new ProofDumper(f);
+	}
+
+private:
 	// Used by VAR_DH_MINISAT:	
 	map<double, unordered_set<Var>, greater<double>> m_Score2Vars; // 'greater' forces an order from large to small of the keys
 	map<double, unordered_set<Var>, greater<double>>::iterator m_Score2Vars_it;
@@ -253,8 +268,8 @@ class Solver {
 	SolverState BCP();
 	int  analyze(const Clause);
 	inline int  getVal(Var v);
-	inline void add_clause(Clause& c, int l, int r);
-	inline void add_unary_clause(Lit l);
+	inline void add_clause(Clause& c, int l, int r, bool original = false);
+	inline void add_unary_clause(Lit l, bool original = false);
 	inline void assert_lit(Lit l);	
 	void m_rescaleScores(double& new_score);
 	inline void backtrack(int k);
@@ -265,12 +280,13 @@ class Solver {
 	inline void bumpLitScore(int lit_idx);
 
 public:
-	Solver(): 
+	Solver():
+		proof_tracer(0),
 		nvars(0), nclauses(0), num_learned(0), num_decisions(0), num_assignments(0), 
 		num_restarts(0), m_var_inc(1.0), qhead(0), 
 		restart_threshold(Restart_lower), restart_lower(Restart_lower), 
 		restart_upper(Restart_upper), restart_multiplier(Restart_multiplier) {};
-	
+	~Solver() { delete proof_tracer; }
 	// service functions
 	inline LitState lit_state(Lit l) {
 		VarState var_state = state[l2v(l)];

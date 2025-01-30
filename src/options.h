@@ -30,4 +30,4 @@ public:	doubleoption(double* p, double _lb, double _ub, string _msg) : option(_m
 	  string val() { return to_string(*p_to_var); }
 };
 void Abort(string s, int i);
-void parse_options(int argc, char** argv);
+void parse_options(int argc, char** argv, bool &with_proof);

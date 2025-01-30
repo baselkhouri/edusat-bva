@@ -54,19 +54,19 @@ void help() {
 	Abort(st.str(), 3);
 }
 
-void parse_options(int argc, char** argv) {
-	if (argc % 2 == 1 || string(argv[1]).compare("-h") == 0)
+void parse_options(int argc, char** argv, bool &with_proof) {
+	if (string(argv[1]).compare("-h") == 0)
 		help();
-	for (int i = 1; i < argc - 1; ++i) {
-		
+	with_proof = (argc % 2);
+	int opargc = with_proof ? argc - 2 : argc - 1;
+	for (int i = 1; i < opargc; ++i) {
 		string st = argv[i] + 1;
 		if (argv[i][0] != '-' || options.count(st) == 0) {
 			cout << st << endl;
 			Abort("Unknown flag ", 2);
 		}
-		if (i == argc - 2) Abort(string("missing value after ") + st, 2);
+		if (i == argc - 3) Abort(string("missing value after ") + st, 2);
 		i++;
 		options[st]->parse(argv[i]);
 	}
-	cout << argv[argc - 1] << endl;
 }
