@@ -36,6 +36,7 @@ typedef vector<Lit> trail_t;
 #define Assignment_file "assignment.txt"
 
 int verbose = 0;
+string proof_path = "";
 double begin_time;
 double timeout = 0.0;
 
@@ -62,7 +63,8 @@ VAL_DEC_HEURISTIC ValDecHeuristic = VAL_DEC_HEURISTIC::PHASESAVING;
 unordered_map<string, option*> options = {
 	{"v",           new intoption(&verbose, 0, 2, "Verbosity level")},
 	{"timeout",     new doubleoption(&timeout, 0.0, 36000.0, "Timeout in seconds")},
-	{"valdh",       new intoption((int*)&ValDecHeuristic, 0, 1, "{0: phase-saving, 1: literal-score}")}
+	{"valdh",       new intoption((int*)&ValDecHeuristic, 0, 1, "{0: phase-saving, 1: literal-score}")},
+	{"proof", 	 	new stringoption(&proof_path, "Path to proof file")}
 };
 
 

@@ -26,19 +26,55 @@ template<typename T> bool Tparse(string st, T val, T lb, T ub, T* var) {
 	return true;
 }
 
+bool booloption::parse(string st){
+	return intoption::parse(st);
+}
+
 bool intoption::parse(string st) {
 	int val;
 	try { val = stoi(st); }
-	catch (...) {Abort("value " + st + " not numeric", 1); }
+	catch (...) {Abort(type_error(st), 1); }
 	return Tparse<int>(st, val, lb, ub, p_to_var);
-};
+}
 
 bool doubleoption::parse(string st) {
 	double val;
 	try { val = stod(st); }
-	catch (...) { Abort("value " + st + " not double", 1); }
+	catch (...) { Abort(type_error(st), 1); }
 	return Tparse<double>(st, val, lb, ub, p_to_var);
-};
+}
+
+bool stringoption::parse(string st) {
+	int int_val;
+	double double_val;
+
+	try {
+		size_t pos;
+		int_val = stoi(st, &pos);
+		if (pos == st.size()) {
+			// If it's an int, abort
+			Abort(type_error(st), 1);
+		}
+	}
+	catch (...) {
+		// Do nothing
+	}
+
+	try {
+		size_t pos;
+		double_val = stod(st, &pos);
+		if (pos == st.size()) {
+			// If it's a double, abort
+			Abort(type_error(st), 1);
+		}
+	}
+	catch (...) {
+		// Do nothing
+	}
+
+	*p_to_var = st;
+	return true;
+}
 
 extern unordered_map<string, option*> options;
 
@@ -54,18 +90,30 @@ void help() {
 	Abort(st.str(), 3);
 }
 
-void parse_options(int argc, char** argv, bool &with_proof) {
-	if (string(argv[1]).compare("-h") == 0)
-		help();
-	with_proof = (argc % 2);
-	int opargc = with_proof ? argc - 2 : argc - 1;
-	for (int i = 1; i < opargc; ++i) {
+void parse_options(int argc, char** argv) {
+	// Look for -h through all argv
+	// Only -h is allowed to appear anywhere in the command line
+	for (int i = 1; i < argc; ++i) {
+		if (string(argv[i]).compare("-h") == 0) {
+			help();
+		}
+	}
+	for (int i = 1; i < argc - 1; ++i) {
 		string st = argv[i] + 1;
 		if (argv[i][0] != '-' || options.count(st) == 0) {
 			cout << st << endl;
 			Abort("Unknown flag ", 2);
 		}
-		if (i == argc - 3) Abort(string("missing value after ") + st, 2);
+		if (i == argc - 2 || argv[i + 1][0] == '-') {
+			if (options[st]->type() == BOOL_OPTION) {
+				// If it's a boolean and no value is given, set it to true
+				options[st]->parse("1");
+				continue;
+			}
+			else
+				Abort(string("missing value after ") + st, 2);
+		}
+		
 		i++;
 		options[st]->parse(argv[i]);
 	}
