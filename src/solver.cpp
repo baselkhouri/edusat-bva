@@ -102,13 +102,13 @@ void Solver::read_cnf(ifstream& in) {
 /******************  Preprocessing ******************************/
 #pragma region preprocessing
 
-void Solver::preprocessBVA() {
-	if (verbose_now()) cout << "preprocessBVA" << endl;
-	
-	// TODO: Implement function here!
+void Solver::preprocess() {
+	cout << "Preprocessing..." << endl;
+
+	preprocessor->reencode(cnf);
 
 	preprocess_time = cpuTime() - read_cnf_time;
-	cout << "Preprocessing done in " << preprocess_time << " secs." << endl << "Solving..." << endl;
+	if (verbose_now()) cout << "Preprocessing done in " << preprocess_time << " secs." << endl;
 	return;
 }
 
@@ -580,7 +580,8 @@ void Solver::restart() {
 	reset();
 }
 
-void Solver::solve() { 
+void Solver::solve() {
+	cout << "Solving..." << endl;
 	SolverState res = _solve(); 	
 	Assert(res == SolverState::SAT || res == SolverState::UNSAT || res == SolverState::TIMEOUT);
 	print_stats();
