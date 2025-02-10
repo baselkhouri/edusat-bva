@@ -623,17 +623,16 @@ int main(int argc, char** argv){
 	cout << "======================================================" << endl;
 	cout << "This is hacked edusat by Basel and Thomas :)" << endl;
 	cout << "======================================================" << endl << endl;
-	bool with_proof;
-	parse_options(argc, argv, with_proof);
-	ifstream in (argv[argc - 1 - with_proof]);
+	parse_options(argc, argv);
+	ifstream in (argv[argc - 1]);
 	if (!in.good())
 		Abort("cannot read input file", 1);
-	if (with_proof) {
-		std::string out(argv[argc - with_proof]);
+	if (options["proof"]->val() != "") {
+		std::string out(options["proof"]->val());
 		S.set_proof_file(out);
-		cout << "Dumping proof to " << argv[argc - 1] << endl << endl;
+		cout << "Dumping proof to " << out << endl << endl;
 	}
-	cout << "Reading CNF from " << argv[argc - 1 - with_proof] << endl;
+	cout << "Reading CNF from " << argv[argc - 1] << endl;
 	S.read_cnf(in);
 	in.close();
 	
