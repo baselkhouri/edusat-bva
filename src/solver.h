@@ -2,6 +2,7 @@
 #include "edusat-header.h"
 #include "clause.h"
 #include "proof.h"
+#include "preprocessor.h"
 
 class Solver {
 	vector<Clause> cnf; // clause DB. 
@@ -18,9 +19,14 @@ class Solver {
 	vector<int> conflicts_at_dl; // decision level => # of conflicts under it. Used for local restarts.
 
 	ProofTracer *proof_tracer;
+	Preprocessor *preprocessor;
 public:
 	inline void set_proof_file(std::string f) {
 		proof_tracer = new ProofDumper(f);
+	}
+
+	inline void set_preprocessor() {
+		preprocessor = new BVA();
 	}
 
 private:
@@ -88,17 +94,20 @@ private:
 
 public:
 	Solver():
-		proof_tracer(0),
+		proof_tracer(0), preprocessor(0),
 		nvars(0), nclauses(0), num_learned(0), num_decisions(0), num_assignments(0), 
 		num_restarts(0), m_var_inc(1.0), qhead(0), 
 		restart_threshold(Restart_lower), restart_lower(Restart_lower), 
 		restart_upper(Restart_upper), restart_multiplier(Restart_multiplier) {};
-	~Solver() { delete proof_tracer; }
+	~Solver() { 
+		delete proof_tracer;
+		delete preprocessor;
+	}
 	void read_cnf(ifstream& in);
 	VarState get_lit_state(int l) { return state[l2v(l)]; }
 	SolverState _solve();
 	void solve();
-	void preprocessBVA();
+	void preprocess();
 
 	ClauseState next_not_false(Clause &c, bool is_left_watch, Lit other_watch, bool binary, int& loc);
 	

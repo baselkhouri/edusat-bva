@@ -20,9 +20,9 @@ Solver S;
 // Options
 unordered_map<string, option*> options = {
 	{"v",           new intoption(&verbose, 0, 2, "Verbosity level")},
-	{"p", 		 	new intoption(&preprocess, 0, 1, "{0: Don't preprocess cnf, 1: preprocess cnf (BVA)}")},
+	{"p", 		 	new booloption(&preprocess, "{0: Don't preprocess cnf, 1: preprocess cnf (BVA)}")},
 	{"timeout",     new doubleoption(&timeout, 0.0, 36000.0, "Timeout in seconds")},
-	{"valdh",       new intoption((int*)&ValDecHeuristic, 0, 1, "{0: phase-saving, 1: literal-score}")},
+	{"valdh",       new booloption((int*)&ValDecHeuristic, "{0: phase-saving, 1: literal-score}")},
 	{"proof", 	 	new stringoption(&proof_path, "Path to proof file")}
 };
 
@@ -45,8 +45,10 @@ int main(int argc, char** argv){
 	cout << "Reading CNF from " << argv[argc - 1] << endl;
 	S.read_cnf(in);
 	in.close();
-	if (preprocess)
-		S.preprocessBVA();
+	if (preprocess) {
+		S.set_preprocessor();
+		S.preprocess();
+	}
 	S.solve();	
 
 	return 0;
