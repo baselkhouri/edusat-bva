@@ -37,6 +37,7 @@ typedef vector<Lit> trail_t;
 
 int verbose = 0;
 int preprocess = 0;
+string proof_path = "";
 double begin_time;
 double read_cnf_time;
 double preprocess_time;
@@ -66,7 +67,8 @@ unordered_map<string, option*> options = {
 	{"v",           new intoption(&verbose, 0, 2, "Verbosity level")},
 	{"p", 		 	new intoption(&preprocess, 0, 1, "{0: Don't preprocess cnf, 1: preprocess cnf (BVA)}")},
 	{"timeout",     new doubleoption(&timeout, 0.0, 36000.0, "Timeout in seconds")},
-	{"valdh",       new intoption((int*)&ValDecHeuristic, 0, 1, "{0: phase-saving, 1: literal-score}")}
+	{"valdh",       new intoption((int*)&ValDecHeuristic, 0, 1, "{0: phase-saving, 1: literal-score}")},
+	{"proof", 	 	new stringoption(&proof_path, "Path to proof file")}
 };
 
 
