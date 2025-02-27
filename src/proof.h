@@ -1,5 +1,4 @@
 #include "file.h"
-#include "edusat.h"
 
 class ProofTracer {
 public:

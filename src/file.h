@@ -1,9 +1,5 @@
-#include <fstream>
-#include <vector>
 #include <string>
 #include <iostream>
-
-#include "edusat.h"
 
 class File {
 private:
