@@ -4,7 +4,6 @@
 #include <sstream>
 #include <unordered_map>
 #include "options.h"
-using namespace std;
 
 
 void Abort(string s, int i) {
