@@ -1,5 +1,6 @@
 #include "solver.h"
 #include "options.h"
+#include "bva.h"
 
 // ================== Global Variables ==================
 
@@ -43,12 +44,16 @@ int main(int argc, char** argv){
 		cout << "Dumping proof to " << out << endl << endl;
 	}
 	cout << "Reading CNF from " << argv[argc - 1] << endl;
-	S.read_cnf(in);
-	in.close();
 	if (preprocess) {
-		S.set_preprocessor();
-		S.preprocess();
+		BVA::AutomatedReencoder processor(S.proof_tracer);
+		processor.readCNF(in);
+		processor.applySimpleBVA();
+		// processor.dump();
+		S.read_cnf(processor.getCNF(), processor.maxVar());
+	} else {
+		S.read_cnf(in);
 	}
+	in.close();
 	S.solve();	
 
 	return 0;
