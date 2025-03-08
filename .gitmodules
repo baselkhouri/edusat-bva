@@ -1,0 +1,3 @@
+[submodule "extern/cadical"]
+	path = extern/cadical
+	url = https://github.com/arminbiere/cadical
