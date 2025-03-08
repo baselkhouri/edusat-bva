@@ -34,40 +34,47 @@ if [ -z "$BINARY" ]; then
     return 1
 fi
 
+DRATTRIM=$(find $WORKDIR/extern/drat-trim -name "drat-trim" -type f)
+
+# Check if binary was found
+if [ -z "$DRATTRIM" ]; then
+    echo "Error: 'drat-trim' binary not found."
+    return 1
+fi
+
 # Store the list of .cnf files in a variable
-CNF_FILES=$(find "$WORKDIR/tests/$TEST_FOLDER" -name "*.cnf")
+CNF_FILES=$(find "$WORKDIR/tests/$TEST_FOLDER" -name "*no*.cnf")
+PROOF_FILE="proof.drat"
 
 # Check if any files were found
 if [[ -z "$CNF_FILES" ]]; then
-    echo "Error: No .cnf files found in $WORKDIR/tests/$TEST_FOLDER."
+    echo "Error: No UNSAT .cnf files found in $WORKDIR/tests/$TEST_FOLDER."
     return 1  # Stop execution safely
+else
+    echo "Found $(echo "$CNF_FILES" | wc -l) UNSAT .cnf files."
 fi
-
 # Loop through the files safely
 while IFS= read -r TEST_INPUT; do
-    OUTPUT=$($BINARY $TEST_INPUT)
+    OUTPUT=$($BINARY -proof $PROOF_FILE $TEST_INPUT)
     NUM_TESTS=$((NUM_TESTS+1))
-    if [[ $OUTPUT == *"UNSAT"* ]]; then
-        if [[ $TEST_INPUT == *"yes"* ]]; then
-            echo -e "[${RED}FAILED${NC}] $TEST_INPUT: Expected 'SAT', got 'UNSAT'."
-            FAILED=$((FAILED+1))
-        else
-            echo -e "[${GREEN}PASSED${NC}] $TEST_INPUT: Test passed."
-        fi
-    elif [[ $OUTPUT == *"SAT"* ]]; then
-        if [[ $TEST_INPUT == *"no"* ]]; then
-            echo -e "[${RED}FAILED${NC}] $TEST_INPUT: Expected 'UNSAT', got 'SAT'."
-            FAILED=$((FAILED+1))
-        else
-            echo -e "[${GREEN}PASSED${NC}] $TEST_INPUT: Test passed."
-        fi
+    if [[ ! $OUTPUT == *"UNSAT"* ]]; then
+        echo -e "[${RED}FAILED${NC}] $TEST_INPUT: Unexpected result. Should be UNSAT."
+        FAILED=$((FAILED+1))
+        continue
+    fi
+
+    # Run drat-trim
+    OUTPUT_DRATRIM=$($DRATTRIM $TEST_INPUT $PROOF_FILE)
+    if [[ ! $OUTPUT_DRATRIM == *"VERIFIED"* ]]; then
+        echo -e "[${RED}FAILED${NC}] $TEST_INPUT: DRAT-trim failed to verify the proof."
+        FAILED=$((FAILED+1))
     else
-        echo -e "[${RED}FAILED${NC}] $TEST_INPUT: Expected 'SAT' or 'UNSAT', got '$OUTPUT'."
+        echo -e "[${GREEN}PASSED${NC}] $TEST_INPUT: DRAT-trim verified the proof."
     fi
 done <<< "$CNF_FILES"
 
-# Delete assignment.txt file if it exists
-rm -f assignment.txt
+# Delete proof.drat file
+rm -f $PROOF_FILE
 
 # Print the number of failed tests
 echo
