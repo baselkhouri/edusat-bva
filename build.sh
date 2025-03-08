@@ -10,11 +10,13 @@ make -C "$WORKDIR"
 # Set executable paths
 EDUSAT="$WORKDIR/build/edusat"
 CADICAL="$WORKDIR/extern/cadical/build/cadical"
+DRATTRIM="$WORKDIR/extern/drat-trim/drat-trim"
 
 # Export executables (instead of aliases)
 echo "Setting up environment variables..."
 alias edusat="$EDUSAT"
 alias cadical="$CADICAL"
+alias drat-trim="$DRATTRIM"
 
 # Build CaDiCaL only if needed
 if [ ! -f "$CADICAL" ]; then
@@ -25,3 +27,9 @@ if [ ! -f "$CADICAL" ]; then
 else
     echo "CaDiCaL is already built."
 fi
+
+# Build Drat-trim
+echo "Building drat-trim..."
+cd "$WORKDIR/extern/drat-trim"
+make
+cd "$WORKDIR"

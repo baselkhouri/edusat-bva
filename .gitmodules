@@ -1,3 +1,6 @@
 [submodule "extern/cadical"]
 	path = extern/cadical
 	url = https://github.com/arminbiere/cadical
+[submodule "extern/drat-trim"]
+	path = extern/drat-trim
+	url = https://github.com/marijnheule/drat-trim

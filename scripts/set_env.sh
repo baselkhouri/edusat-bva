@@ -13,3 +13,8 @@ echo "Alias 'edusat' created successfully!"
 CADICAL="$WORKDIR/extern/cadical/build/cadical"
 alias cadical="$CADICAL"
 echo "Alias 'cadical' created successfully!"
+
+# Create an alias to the drat-trim binary file
+DRATTRIM="$WORKDIR/extern/drat-trim/drat-trim"
+alias drat-trim="$DRATTRIM"
+echo "Alias 'drat-trim' created successfully!"
