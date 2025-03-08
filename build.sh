@@ -5,7 +5,7 @@ WORKDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # Build Edusat
 echo "Building Edusat..."
-make -C "$WORKDIR"
+make -C "$WORKDIR" 
 
 # Set executable paths
 EDUSAT="$WORKDIR/build/edusat"
