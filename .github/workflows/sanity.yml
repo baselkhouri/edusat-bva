@@ -1,0 +1,20 @@
+name: Project CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  easy_cnf:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Run your script
+      run: |
+        chmod +x tests/sanity_tester.sh
+        ./tests/sanity_tester.sh easy_cnf_instances
+    - name: Check easy_cnf instances passed
+      if: ${{ failure() }}
+      run: echo "sanity_tester.sh FAILED on easy_cnf_instances, please fix the issues" && exit 1
