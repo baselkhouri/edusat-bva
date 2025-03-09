@@ -129,7 +129,6 @@ public:
 	void print_state(const char *file_name) {
 		ofstream out;
 		out.open(file_name);		
-		out << "State: "; 
 		for (vector<VarState>::iterator it = state.begin() + 1; it != state.end(); ++it) {
 			char sign = (*it) == VarState::V_FALSE ? -1 : (*it) == VarState::V_TRUE ? 1 : 0;
 			out << sign * (it - state.begin()) << " "; out << endl;
@@ -137,7 +136,6 @@ public:
 	}	
 
 	void print_state() {
-		cout << "State: "; 
 		for (vector<VarState>::iterator it = state.begin() + 1; it != state.end(); ++it) {
 			char sign = (*it) == VarState::V_FALSE ? -1 : (*it) == VarState::V_TRUE ? 1 : 0;
 			cout << sign * (it - state.begin()) << " "; cout << endl;
