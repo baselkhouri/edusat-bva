@@ -48,7 +48,7 @@ int main(int argc, char** argv){
 		BVA::AutomatedReencoder processor(S.proof_tracer);
 		processor.readCNF(in);
 		processor.applySimpleBVA();
-		// processor.dump();
+		processor.dump();
 		S.read_cnf(processor.getCNF(), processor.maxVar());
 	} else {
 		S.read_cnf(in);

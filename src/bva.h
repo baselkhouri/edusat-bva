@@ -1,3 +1,5 @@
+#include <queue>
+#include <set>
 #include <cstdint>
 #include <limits.h>
 #include <cstring>
@@ -45,13 +47,14 @@ private:
     bool tautological(const vector<int> &c);
     int getLeastOccurring(Clause *, int);
     int getSingleLiteralDifference(Clause *, Clause *);
-    bool reductionIncreases(const vector<pair<int, Clause *>> &, const vector<int> &, const vector<Clause *> &, int) const;
+    bool reductionIncreases(const vector<pair<int, Clause *>> &, const set<int> &, const vector<Clause *> &, int) const;
     bool isReplaceableMatch(const vector<int> &, const vector<Clause *> &) const;
     int introduceNewVariable();
     bool clausesAreIdentical(const Clause &, const Clause &);
     bool unary(const Clause *) const;
-    Clause *newClause(const vector<int> &);
-    void removeClause(const vector<int> &);
+    Clause *newClause(priority_queue<pair<size_t, int>> &, const vector<int> &);
+    Clause *removeClause(priority_queue<pair<size_t, int>> &, const vector<int> &);
+    void popExpiredElementsFromHeap(priority_queue<pair<size_t, int>> &);
 
 public:
     AutomatedReencoder(ProofTracer *);

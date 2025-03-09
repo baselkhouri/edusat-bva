@@ -1,5 +1,4 @@
 #include "bva.h"
-#include <queue>
 #include <utility> // for pair
 
 namespace BVA
@@ -158,11 +157,14 @@ namespace BVA
         return diffs > 1 ? 0 : diff_lit;
     }
 
-    bool AutomatedReencoder::reductionIncreases(const vector<pair<int, Clause *>> &P_cls, const vector<int> &M_lit, const vector<Clause *> &M_cls, int lit) const
+    bool AutomatedReencoder::reductionIncreases(const vector<pair<int, Clause *>> &P_cls, const set<int> &M_lit, const vector<Clause *> &M_cls, int lit) const
     {
-        const int new_red = (M_lit.size()+ 1) * P_cls.size() - M_lit.size() - 1 - P_cls.size();
+        auto M_litt(M_lit);
+        M_litt.insert(lit);
+        const int new_red = (M_litt.size()) * P_cls.size() - M_litt.size() - P_cls.size();
         const int old_red = M_lit.size() * M_cls.size() - M_lit.size() - M_cls.size();
-        return new_red > old_red;
+        // cout << "new_red = " << new_red << " old_red " << old_red << endl;
+        return new_red > old_red && new_red > 0;
     }
 
     bool AutomatedReencoder::isReplaceableMatch(const vector<int> &M_lit, const vector<Clause *> &M_cls) const
@@ -198,21 +200,25 @@ namespace BVA
         return c->size() == 1;
     }
 
-    Clause *AutomatedReencoder::newClause(const vector<int> &lits)
+    Clause *AutomatedReencoder::newClause(priority_queue<pair<size_t, int>> &Q, const vector<int> &lits)
     {
         Clause *c = new Clause(lits);
         assert(c);
         if (proof)
             proof->notify_added_clause(*c, false /*learnt*/);
         for (int lit : *c)
+        {
             occs(lit).push_back(c);
+            Q.push({occs(lit).size(), lit});
+        }
         cnf.push_back(c);
         return c;
     }
 
-    void AutomatedReencoder::removeClause(const vector<int> &lits)
+    Clause *AutomatedReencoder::removeClause(priority_queue<pair<size_t, int>> &Q, const vector<int> &lits)
     {
         vector<Clause *> to_delete;
+
         // Remove from cnf
         const auto end = cnf.end();
         auto i = cnf.begin();
@@ -247,12 +253,34 @@ namespace BVA
                 }
                 assert(i + 1 == end);
                 os.resize(i - os.begin());
+                Q.push({occs(lit).size(), lit});
             }
         }
 
-        // Deallocate
-        for (int i = 0; i < to_delete.size(); i++)
-            delete to_delete[i];
+        assert(to_delete.size() == 1);
+        return to_delete[0];
+    }
+
+    void AutomatedReencoder::popExpiredElementsFromHeap(priority_queue<pair<size_t, int>> &Q)
+    {
+        // Now, since occs have updated for some literals without
+        // updating their place in the heap, we ensure the next
+        // variable to pop is stale!
+        while (!Q.empty())
+        {
+            auto [storedOcc, storedLit] = Q.top();
+            // Check if it's stale
+            if (storedOcc == occs(storedLit).size())
+            {
+                // It's valid
+                break;
+            }
+            else
+            {
+                // It's stale -- pop and ignore
+                Q.pop();
+            }
+        }
     }
 
     AutomatedReencoder::AutomatedReencoder(ProofTracer *t) : proof(t), size_vars(0), max_var(0) {}
@@ -261,7 +289,11 @@ namespace BVA
 
     // TODO:
     // 1) Consider converting P intro a priority queue
-    // 2) 
+    // 2) Consider changing the clauses databse to achieve efficient removal of clauses
+    // 3) Should we propagate all unit clauses and assume no units?
+    // 4) Consider directly updating elements in the queue
+    // 5) Deallocating the clauses in the destructor is missing!
+    // 6) Consider fixing the method ::reductionIncreases
     void AutomatedReencoder::applySimpleBVA()
     {
         TIME_BLOCK("[BVA] Simple Bounded Variable Addition");
@@ -295,15 +327,31 @@ namespace BVA
         // Main algorithm loop
         while (!Q.empty())
         {
+            popExpiredElementsFromHeap(Q);
+            if (Q.empty())
+                break;
             auto [occCount, l] = Q.top();
             Q.pop();
             const auto &F_l = occs(l);
             assert(occCount == F_l.size());
 
+            // cout << "l = " << l << endl;
+
             vector<Clause *> M_cls(F_l);
-            vector<int> M_lit = {l};
+            set<int> M_lit = {l};
+
         label1:
             vector<pair<int, Clause *>> P = {};
+            assert(P.empty());
+
+            // cout << "M_lit = ";
+            // for (int lit : M_lit)
+            //     cout << lit << " ";
+            // cout << endl;
+            // cout << "M_cls = {";
+            // for (const auto &c : M_cls)
+            //     cout << "   " << *c << endl;
+            // cout << "}" << endl;
 
             // Lines 5-10
             for (const auto &c : M_cls)
@@ -311,8 +359,13 @@ namespace BVA
                 if (unary(c))
                     continue;
                 int l_min = getLeastOccurring(c, l);
+                // cout << "l_min = " << l_min << endl;
                 assert(l_min && l_min != l);
                 const auto &F_l_min = occs(l_min);
+                // cout << "F_l_min = {" << endl;
+                // for (const auto &c : F_l_min)
+                //     cout << "   " << *c << endl;
+                // cout << "}" << endl;
                 // Lines 7-10
                 for (const auto &d : F_l_min)
                     if (l == getSingleLiteralDifference(c, d))
@@ -321,6 +374,10 @@ namespace BVA
                         assert(l_);
                         P.push_back({l_, c});
                     }
+                // cout << "P = {" << endl;
+                // for (const auto &p : P)
+                //     cout << "   <" << p.first << ", " << *p.second << ">" << endl;
+                // cout << "}" << endl;
             }
 
             if (P.size())
@@ -335,10 +392,13 @@ namespace BVA
                     }
                 assert(l_max);
 
+                // cout << "l_max = " << l_max << endl;
+
                 // Lines 12-16
                 if (reductionIncreases(P, M_lit, M_cls, l_max))
                 {
-                    M_lit.push_back(l_max);
+                    // cout << "REDUCTION INCREASES!" << endl;
+                    M_lit.insert(l_max);
                     M_cls.clear();
                     for (const auto &p : P)
                         if (p.first == l_max)
@@ -346,23 +406,28 @@ namespace BVA
                     goto label1;
                 }
             }
+            else
+            {
+                // cout << "P is empty" << endl;
+            }
 
             // Line 17
             if (M_lit.size() == 1)
                 continue;
 
+            vector<Clause *> to_deallocate;
             // Lines 18-22
             int x = introduceNewVariable();
             for (int l_ : M_lit)
             {
-                newClause({l_, x});
+                newClause(Q, {l_, x});
                 for (Clause *c : M_cls)
                 {
                     Clause d = {l_};
                     for (int ll : *c)
                         if (ll != l)
                             d.push_back(ll);
-                    removeClause(d);
+                    to_deallocate.push_back(removeClause(Q, d));
                 }
             }
 
@@ -372,31 +437,16 @@ namespace BVA
                 vector<int> d = {-x};
                 for (int lit : *c)
                     if (lit != l)
-                        d.push_back(l);
-                newClause(d);
+                        d.push_back(lit);
+                newClause(Q, d);
             }
+
+            for (int i = 0; i < to_deallocate.size(); i++)
+                delete to_deallocate[i];
+
             Q.push({occs(l).size(), l});
             Q.push({occs(-x).size(), -x});
             Q.push({occs(x).size(), x});
-
-            // Now, since occs have updated for some literals without
-            // updating their place in the heap, we ensure the next
-            // variable to pop is stale!
-            while (!Q.empty())
-            {
-                auto [storedOcc, storedLit] = Q.top();
-                // Check if it's stale
-                if (storedOcc == occs(storedLit).size())
-                {
-                    // It's valid
-                    break;
-                }
-                else
-                {
-                    // It's stale -- pop and ignore
-                    Q.pop();
-                }
-            }
         }
     }
 
@@ -468,7 +518,7 @@ namespace BVA
         }
 
         assert(pLineFound);
-        assert(max_var == numVariables);  // Can be relaxed
+        assert(max_var == numVariables);                      // Can be relaxed
         assert((cnf.size() + num_tautologies) == numClauses); // Can be relaxed
 
         cout << num_tautologies << " tautological clauses has been found" << endl;
