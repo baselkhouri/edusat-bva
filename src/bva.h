@@ -45,14 +45,13 @@ private:
     bool tautological(const vector<int> &c);
     int getLeastOccurring(Clause *, int);
     int getSingleLiteralDifference(Clause *, Clause *);
-    int reduction(const vector<int> &, const vector<Clause *> &) const;
-    bool reductionIncreases(const vector<int> &, const vector<Clause *> &, int) const;
+    bool reductionIncreases(const vector<pair<int, Clause *>> &, const vector<int> &, const vector<Clause *> &, int) const;
     bool isReplaceableMatch(const vector<int> &, const vector<Clause *> &) const;
     int introduceNewVariable();
     bool clausesAreIdentical(const Clause &, const Clause &);
     bool unary(const Clause *) const;
-    Clause *new_clause(const vector<int> &);
-    void remove_clause(const vector<int> &);
+    Clause *newClause(const vector<int> &);
+    void removeClause(const vector<int> &);
 
 public:
     AutomatedReencoder(ProofTracer *);

@@ -158,16 +158,11 @@ namespace BVA
         return diffs > 1 ? 0 : diff_lit;
     }
 
-    int AutomatedReencoder::reduction(const vector<int> &M_lit, const vector<Clause *> &M_cls) const
+    bool AutomatedReencoder::reductionIncreases(const vector<pair<int, Clause *>> &P_cls, const vector<int> &M_lit, const vector<Clause *> &M_cls, int lit) const
     {
-        return M_lit.size() * M_cls.size() - M_lit.size() - M_cls.size();
-    }
-
-    bool AutomatedReencoder::reductionIncreases(const vector<int> &M_lit, const vector<Clause *> &M_cls, int lit) const
-    {
-        vector<int> M_lit_new(M_lit);
-        M_lit_new.push_back(lit);
-        return reduction(M_lit_new, M_cls) > reduction(M_lit, M_cls);
+        const int new_red = (M_lit.size()+ 1) * P_cls.size() - M_lit.size() - 1 - P_cls.size();
+        const int old_red = M_lit.size() * M_cls.size() - M_lit.size() - M_cls.size();
+        return new_red > old_red;
     }
 
     bool AutomatedReencoder::isReplaceableMatch(const vector<int> &M_lit, const vector<Clause *> &M_cls) const
@@ -194,6 +189,7 @@ namespace BVA
             identical &= (marked(lit) > 0);
         for (int lit : c)
             unmark(lit);
+        return identical;
     }
 
     bool AutomatedReencoder::unary(const Clause *c) const
@@ -202,7 +198,7 @@ namespace BVA
         return c->size() == 1;
     }
 
-    Clause *AutomatedReencoder::new_clause(const vector<int> &lits)
+    Clause *AutomatedReencoder::newClause(const vector<int> &lits)
     {
         Clause *c = new Clause(lits);
         assert(c);
@@ -214,7 +210,7 @@ namespace BVA
         return c;
     }
 
-    void AutomatedReencoder::remove_clause(const vector<int> &lits)
+    void AutomatedReencoder::removeClause(const vector<int> &lits)
     {
         vector<Clause *> to_delete;
         // Remove from cnf
@@ -263,6 +259,9 @@ namespace BVA
 
     int AutomatedReencoder::num_occs(int a) const { return occs(a).size(); }
 
+    // TODO:
+    // 1) Consider converting P intro a priority queue
+    // 2) 
     void AutomatedReencoder::applySimpleBVA()
     {
         TIME_BLOCK("[BVA] Simple Bounded Variable Addition");
@@ -279,7 +278,7 @@ namespace BVA
             }
         }
 
-        priority_queue<pair<size_t, int>> literalMaxHeap;
+        priority_queue<pair<size_t, int>> Q;
 
         {
             TIME_BLOCK("[BVA] Building prority queue");
@@ -289,15 +288,15 @@ namespace BVA
                     continue;
                 size_t occCount = occs(lit).size();
                 if (occCount)
-                    literalMaxHeap.push({occCount, lit});
+                    Q.push({occCount, lit});
             }
         }
 
         // Main algorithm loop
-        while (!literalMaxHeap.empty())
+        while (!Q.empty())
         {
-            auto [occCount, l] = literalMaxHeap.top();
-            literalMaxHeap.pop();
+            auto [occCount, l] = Q.top();
+            Q.pop();
             const auto &F_l = occs(l);
             assert(occCount == F_l.size());
 
@@ -312,8 +311,7 @@ namespace BVA
                 if (unary(c))
                     continue;
                 int l_min = getLeastOccurring(c, l);
-                assert(l_min);
-                assert(l_min != l);
+                assert(l_min && l_min != l);
                 const auto &F_l_min = occs(l_min);
                 // Lines 7-10
                 for (const auto &d : F_l_min)
@@ -338,7 +336,7 @@ namespace BVA
                 assert(l_max);
 
                 // Lines 12-16
-                if (reductionIncreases(M_lit, M_cls, l_max))
+                if (reductionIncreases(P, M_lit, M_cls, l_max))
                 {
                     M_lit.push_back(l_max);
                     M_cls.clear();
@@ -348,6 +346,7 @@ namespace BVA
                     goto label1;
                 }
             }
+
             // Line 17
             if (M_lit.size() == 1)
                 continue;
@@ -356,14 +355,14 @@ namespace BVA
             int x = introduceNewVariable();
             for (int l_ : M_lit)
             {
-                new_clause({l_, x});
+                newClause({l_, x});
                 for (Clause *c : M_cls)
                 {
                     Clause d = {l_};
                     for (int ll : *c)
                         if (ll != l)
                             d.push_back(ll);
-                    remove_clause(d);
+                    removeClause(d);
                 }
             }
 
@@ -374,18 +373,18 @@ namespace BVA
                 for (int lit : *c)
                     if (lit != l)
                         d.push_back(l);
-                new_clause(d);
+                newClause(d);
             }
-            literalMaxHeap.push({occs(l).size(), l});
-            literalMaxHeap.push({occs(-x).size(), -x});
-            literalMaxHeap.push({occs(x).size(), x});
+            Q.push({occs(l).size(), l});
+            Q.push({occs(-x).size(), -x});
+            Q.push({occs(x).size(), x});
 
             // Now, since occs have updated for some literals without
             // updating their place in the heap, we ensure the next
             // variable to pop is stale!
-            while (!literalMaxHeap.empty())
+            while (!Q.empty())
             {
-                auto [storedOcc, storedLit] = literalMaxHeap.top();
+                auto [storedOcc, storedLit] = Q.top();
                 // Check if it's stale
                 if (storedOcc == occs(storedLit).size())
                 {
@@ -395,7 +394,7 @@ namespace BVA
                 else
                 {
                     // It's stale -- pop and ignore
-                    literalMaxHeap.pop();
+                    Q.pop();
                 }
             }
         }
@@ -470,7 +469,7 @@ namespace BVA
 
         assert(pLineFound);
         assert(max_var == numVariables);  // Can be relaxed
-        assert(cnf.size() == numClauses); // Can be relaxed
+        assert((cnf.size() + num_tautologies) == numClauses); // Can be relaxed
 
         cout << num_tautologies << " tautological clauses has been found" << endl;
     }
