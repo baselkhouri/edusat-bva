@@ -51,6 +51,8 @@ private:
     int introduceNewVariable();
     bool clausesAreIdentical(const Clause &, const Clause &);
     bool unary(const Clause *) const;
+    Clause *new_clause(const vector<int> &);
+    void remove_clause(const vector<int> &);
 
 public:
     AutomatedReencoder(ProofTracer *);

@@ -22,7 +22,7 @@ alias drat-trim="$DRATTRIM"
 if [ ! -f "$CADICAL" ]; then
     echo "Building CaDiCaL..."
     cd "$WORKDIR/extern/cadical"
-    ./configure && make
+    ./configure && make -j40
     cd "$WORKDIR"
 else
     echo "CaDiCaL is already built."
