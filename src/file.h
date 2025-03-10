@@ -25,7 +25,7 @@ public:
 
     void line(const std::string& data) {
         if (file_.is_open()) {
-            file_ << data << endl;
+            file_ << data << std::endl;
         }
     }
 };
