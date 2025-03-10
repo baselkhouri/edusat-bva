@@ -6,6 +6,7 @@ public:
     virtual ~ProofTracer() = default;
     virtual void notify_added_clause(const std::vector<int>&, bool original) = 0;
     virtual void notify_deleted_clause(const std::vector<int>&) = 0;
+    virtual void notify_comment(const std::string &) = 0;
 };
 
 class ProofDumper : public ProofTracer {
@@ -35,5 +36,9 @@ public:
             line += " " + std::to_string(lit);
         line += " 0";
         m_file.line(line);
+    }
+
+    virtual void notify_comment(const std::string &line) override {
+        m_file.line("c " + line);
     }
 };

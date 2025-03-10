@@ -3,12 +3,14 @@
 
 // A small RAII helper that records a start time in the constructor,
 // and in the destructor it prints the message and the elapsed time.
-class TimeBlockHelper {
+class TimeBlockHelper
+{
 public:
     // Constructor: store the message, record start time
-    explicit TimeBlockHelper(const char* msg)
+    explicit TimeBlockHelper(const char *msg)
         : message(msg), start(std::chrono::steady_clock::now())
-    {}
+    {
+    }
 
     // Destructor: measure end time, compute elapsed, and print
     ~TimeBlockHelper()
@@ -19,7 +21,7 @@ public:
     }
 
 private:
-    const char* message;
+    const char *message;
     std::chrono::steady_clock::time_point start;
 };
 
@@ -30,3 +32,11 @@ private:
 // The user-facing macro that you place in a scope to measure time
 // The "msg" argument is the message you want printed along with the time.
 #define TIME_BLOCK(msg) TimeBlockHelper UNIQUE_VAR_NAME(__LINE__)(msg)
+
+// This macro uses ANSI escape codes to move the cursor back to the start of the line ('\r')
+// and clear that line ("\033[K"), then prints the new message without a trailing newline.
+#define UPDATE_PROGRESS(msg)                            \
+    do                                                  \
+    {                                                   \
+        std::cout << "\r\033[K" << (msg) << std::flush; \
+    } while (0)

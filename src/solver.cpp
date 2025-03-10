@@ -116,7 +116,7 @@ void Solver::read_cnf(ifstream &in)
 	}
 	if (VarDecHeuristic == VAR_DEC_HEURISTIC::MINISAT)
 		reset_iterators();
-	read_cnf_time = cpuTime() - begin_time;
+	read_cnf_time = cpuTime() - solving_begin_time;
 	cout << "Read " << cnf_size() << " clauses in " << read_cnf_time << " secs." << endl;
 }
 
@@ -186,7 +186,7 @@ void Solver::read_cnf(const vector<vector<int> *> &cnf_, const int max_var)
 	if (VarDecHeuristic == VAR_DEC_HEURISTIC::MINISAT)
 		reset_iterators();
 	// TODO: Time calculation inaccurate..
-	read_cnf_time = cpuTime() - begin_time;
+	read_cnf_time = cpuTime() - solving_begin_time;
 	cout << "Read " << cnf_size() << " clauses in " << read_cnf_time << " secs." << endl;;
 }
 
@@ -810,7 +810,7 @@ SolverState Solver::_solve()
 	SolverState res;
 	while (true)
 	{
-		if (timeout > 0 && cpuTime() - begin_time > timeout)
+		if (timeout > 0 && cpuTime() - solving_begin_time > timeout)
 			return SolverState::TIMEOUT;
 		while (true)
 		{

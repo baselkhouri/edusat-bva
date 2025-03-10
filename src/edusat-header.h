@@ -101,6 +101,7 @@ extern int preprocess;
 extern string proof_path;
 extern double timeout;
 extern double begin_time;
+extern double solving_begin_time;
 extern double read_cnf_time;
 extern double preprocess_time;
 extern VAR_DEC_HEURISTIC VarDecHeuristic;

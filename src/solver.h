@@ -150,7 +150,9 @@ public:
 		"### Learned-clauses:\t" << num_learned << endl <<
 		"### Decisions:\t\t" << num_decisions << endl <<
 		"### Implications:\t" << num_assignments - num_decisions << endl <<
-		"### Time:\t\t" << cpuTime() - begin_time << endl;
+		"### Preprocess Time:\t" << preprocess_time << endl <<
+		"### Search Time:\t" << cpuTime() - solving_begin_time << endl <<
+		"### Solve Time:\t\t" << cpuTime() - begin_time << endl;
 	}
 	
 	void validate_assignment();

@@ -33,7 +33,8 @@ private:
     vector<signed char> marks;
     vector<char> seen;
     vector<Occs> otab;
-    int max_var;
+    int max_var, max_iterations;
+    struct { int64_t added, deleted, aux_vars; } stats;
 
 private:
     int vidx(int lit) const;
@@ -53,8 +54,10 @@ private:
     bool clausesAreIdentical(const Clause &, const Clause &);
     bool unary(const Clause *) const;
     Clause *newClause(priority_queue<pair<size_t, int>> &, const vector<int> &);
-    Clause *removeClause(priority_queue<pair<size_t, int>> &, const vector<int> &);
+    void removeClause(priority_queue<pair<size_t, int>> &, const vector<int> &, vector<Clause *> &);
     void popExpiredElementsFromHeap(priority_queue<pair<size_t, int>> &);
+    void dumpCNF() const;
+    void dumpOccurrences() const;
 
 public:
     AutomatedReencoder(ProofTracer *);
@@ -63,6 +66,7 @@ public:
     void readCNF(std::ifstream &);
     const vector<Clause *> &getCNF() const;
     int maxVar() const;
-    void dump() const;
+    void setIterations(int);
+    void writeDimacsCNF(const char *) const;
 };
 };

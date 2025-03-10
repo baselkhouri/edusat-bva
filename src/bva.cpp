@@ -1,6 +1,22 @@
 #include "bva.h"
 #include <utility> // for pair
 
+// #define DEBMSG
+
+#ifdef DEBMSG
+#define DEBUG_MSG(cmd) \
+    do                 \
+    {                  \
+        cmd;           \
+    } while (0)
+#else
+#define DEBUG_MSG(cmd) \
+    do                 \
+    {                  \
+    } while (0)
+#endif
+
+
 namespace BVA
 {
 
@@ -160,7 +176,7 @@ namespace BVA
     bool AutomatedReencoder::reductionIncreases(const vector<pair<int, Clause *>> &P_cls, const set<int> &M_lit, const vector<Clause *> &M_cls, int lit) const
     {
         const int old_red = M_lit.size() * M_cls.size() - M_lit.size() - M_cls.size();
-        
+
         auto M_litt(M_lit);
         M_litt.insert(lit);
         // Count only relevant clauses in P_cls
@@ -168,11 +184,11 @@ namespace BVA
         for (const auto &p : P_cls)
         {
             if (p.first == lit)
-            P_relevant++;
+                P_relevant++;
         }
         assert(P_relevant);
         const int new_red = (M_litt.size()) * P_relevant - M_litt.size() - P_relevant;
-        // cout << "new_red = " << new_red << " old_red " << old_red << endl;
+        DEBUG_MSG(cout << "new_red = " << new_red << " old_red " << old_red << endl);
         return new_red > old_red && new_red > 0;
     }
 
@@ -188,6 +204,7 @@ namespace BVA
             enlarge_marks(x);
         for (int i = otab.size() - 1; i < 2 * size_vars + 2; i++)
             otab.push_back(Occs());
+        stats.aux_vars++;
         return x;
     }
 
@@ -221,12 +238,13 @@ namespace BVA
             Q.push({occs(lit).size(), lit});
         }
         cnf.push_back(c);
+        stats.added += 1;
         return c;
     }
 
-    Clause *AutomatedReencoder::removeClause(priority_queue<pair<size_t, int>> &Q, const vector<int> &lits)
+    void AutomatedReencoder::removeClause(priority_queue<pair<size_t, int>> &Q, const vector<int> &lits, vector<Clause *> &to_deallocate)
     {
-        vector<Clause *> to_delete;
+        int deleted = 0;
 
         // Remove from cnf
         const auto end = cnf.end();
@@ -237,17 +255,20 @@ namespace BVA
             if (clausesAreIdentical(*d, lits))
             {
                 i--;
-                if (proof)
-                    proof->notify_deleted_clause(*d);
-                to_delete.push_back(d);
+                to_deallocate.push_back(d);
+                deleted++;
             }
         }
-        assert(i + 1 == end); // can be relaxed?
+        // assert(deleted >= 1); // TODO: While I believe it is safe, we need to make sure that can happen
+        assert(i + deleted == end); // can be relaxed?
         cnf.resize(i - cnf.begin());
 
         // Remove from occs
-        for (Clause *c : to_delete)
+        const int sz = to_deallocate.size();
+        int index = to_deallocate.size() - deleted;
+        while (index < sz)
         {
+            Clause *c = to_deallocate[index++];
             assert(c);
             for (int lit : *c)
             {
@@ -266,8 +287,7 @@ namespace BVA
             }
         }
 
-        assert(to_delete.size() == 1);
-        return to_delete[0];
+        stats.deleted += deleted;
     }
 
     void AutomatedReencoder::popExpiredElementsFromHeap(priority_queue<pair<size_t, int>> &Q)
@@ -292,20 +312,26 @@ namespace BVA
         }
     }
 
-    AutomatedReencoder::AutomatedReencoder(ProofTracer *t) : proof(t), size_vars(0), max_var(0) {}
+    AutomatedReencoder::AutomatedReencoder(ProofTracer *t) : proof(t), size_vars(0), max_var(0), max_iterations(10000000)
+    {
+        memset(&stats, 0, sizeof(stats));
+    }
 
     int AutomatedReencoder::num_occs(int a) const { return occs(a).size(); }
 
     // TODO:
-    // 1) Consider converting P intro a priority queue
-    // 2) Consider changing the clauses databse to achieve efficient removal of clauses
-    // 3) Should we propagate all unit clauses and assume no units?
-    // 4) Consider directly updating elements in the queue
-    // 5) Deallocating the clauses in the destructor is missing!
-    // 6) Consider fixing the method ::reductionIncreases
+    // 1) <<MINOR>> Consider converting P intro a priority queue
+    // 2) <<MAJOR>> Consider changing the clauses databse to a hash table instead of vector to achieve efficient removal of clauses
+    // 3) <<INFO>> Should we propagate all unit clauses and assume no units? The answer seems to be NO...
+    // 4) <<MINOR>> Consider directly updating elements in the queue
+    // 5) <<MAJOR>> Deallocating the clauses in the destructor is missing!
+    // 6) <<MINOR>> Consider fixing the method ::reductionIncreases
     void AutomatedReencoder::applySimpleBVA()
     {
         TIME_BLOCK("[BVA] Simple Bounded Variable Addition");
+
+        // if (proof)
+        //     proof->notify_comment("Applying Simple Bounded Addition Algorithm:");
 
         {
             TIME_BLOCK("[BVA] Building occurrences list");
@@ -333,18 +359,26 @@ namespace BVA
             }
         }
 
+        int iteration = 0;
         // Main algorithm loop
         while (!Q.empty())
         {
+            // Check if maximum iteration limit has been reached
+            if (++iteration > max_iterations)
+                break;
+            UPDATE_PROGRESS("[BVA] Iteration " + to_string(iteration));
+
+            // Ensure the next element is not stale
             popExpiredElementsFromHeap(Q);
             if (Q.empty())
                 break;
+
             auto [occCount, l] = Q.top();
             Q.pop();
             const auto &F_l = occs(l);
             assert(occCount == F_l.size());
 
-            // cout << "l = " << l << endl;
+            DEBUG_MSG(cout << "l = " << l << endl);
 
             vector<Clause *> M_cls(F_l);
             set<int> M_lit = {l};
@@ -353,14 +387,14 @@ namespace BVA
             vector<pair<int, Clause *>> P = {};
             assert(P.empty());
 
-            // cout << "M_lit = ";
-            // for (int lit : M_lit)
-            //     cout << lit << " ";
-            // cout << endl;
-            // cout << "M_cls = {";
-            // for (const auto &c : M_cls)
-            //     cout << "   " << *c << endl;
-            // cout << "}" << endl;
+            DEBUG_MSG(cout << "M_lit = " <<;
+            for (int lit : M_lit)
+                cout << lit << " ";
+            cout << endl;
+            cout << "M_cls = {" << endl;
+            for (const auto &c : M_cls)
+                cout << "   " << *c << endl;
+            cout << "}" << endl;);
 
             // Lines 5-10
             for (const auto &c : M_cls)
@@ -368,13 +402,13 @@ namespace BVA
                 if (unary(c))
                     continue;
                 int l_min = getLeastOccurring(c, l);
-                // cout << "l_min = " << l_min << endl;
                 assert(l_min && l_min != l);
                 const auto &F_l_min = occs(l_min);
-                // cout << "F_l_min = {" << endl;
-                // for (const auto &c : F_l_min)
-                //     cout << "   " << *c << endl;
-                // cout << "}" << endl;
+                DEBUG_MSG(cout << "l_min = " << l_min << endl;
+                cout << "F_l_min = {" << endl;
+                for (const auto &c : F_l_min)
+                    cout << "   " << *c << endl;
+                cout << "}" << endl;);
                 // Lines 7-10
                 for (const auto &d : F_l_min)
                     if (l == getSingleLiteralDifference(c, d))
@@ -383,10 +417,10 @@ namespace BVA
                         assert(l_);
                         P.push_back({l_, c});
                     }
-                // cout << "P = {" << endl;
-                // for (const auto &p : P)
-                //     cout << "   <" << p.first << ", " << *p.second << ">" << endl;
-                // cout << "}" << endl;
+                DEBUG_MSG(cout << "P = {" << endl;
+                for (const auto &p : P)
+                    cout << "   <" << p.first << ", " << *p.second << ">" << endl;
+                cout << "}" << endl;);
             }
 
             if (P.size())
@@ -401,12 +435,12 @@ namespace BVA
                     }
                 assert(l_max);
 
-                // cout << "l_max = " << l_max << endl;
+                DEBUG_MSG(cout << "l_max = " << l_max << endl;);
 
                 // Lines 12-16
                 if (reductionIncreases(P, M_lit, M_cls, l_max))
                 {
-                    // cout << "REDUCTION INCREASES!" << endl;
+                    DEBUG_MSG(cout << "REDUCTION INCREASES!" << endl;);
                     M_lit.insert(l_max);
                     M_cls.clear();
                     for (const auto &p : P)
@@ -415,10 +449,7 @@ namespace BVA
                     goto label1;
                 }
             }
-            else
-            {
-                // cout << "P is empty" << endl;
-            }
+            else DEBUG_MSG(cout << "P is empty" << endl;);
 
             // Line 17
             if (M_lit.size() == 1)
@@ -436,7 +467,7 @@ namespace BVA
                     for (int ll : *c)
                         if (ll != l)
                             d.push_back(ll);
-                    to_deallocate.push_back(removeClause(Q, d));
+                    removeClause(Q, d, to_deallocate);
                 }
             }
 
@@ -451,11 +482,34 @@ namespace BVA
             }
 
             for (int i = 0; i < to_deallocate.size(); i++)
-                delete to_deallocate[i];
+            {
+                Clause *d = to_deallocate[i];
+                if (proof)
+                    proof->notify_deleted_clause(*d);
+                delete d;
+            }
 
             Q.push({occs(l).size(), l});
             Q.push({occs(-x).size(), -x});
             Q.push({occs(x).size(), x});
+        }
+
+        if (iteration > max_iterations)
+            cout
+                 << " -> Reached max iterations limit" << endl;
+        else
+            cout
+                 << " -> Algorithm ended" << endl;
+        cout << "[BVA] Statistics:" << endl;
+        cout << "[BVA]    " << stats.added << " clauses added" << endl;
+        cout << "[BVA]    " << stats.deleted << " clauses deleted" << endl;
+        cout << "[BVA]    " << stats.deleted - stats.added << " clauses reduced in total" << endl;
+        cout << "[BVA]    " << stats.aux_vars << " auxiliary variables used" << endl;
+        if (proof)
+        {
+            proof->notify_comment("    " + to_string(stats.added) + " clauses added");
+            proof->notify_comment("    " + to_string(stats.deleted) + " clauses deleted");
+            proof->notify_comment("    " + to_string(stats.aux_vars) + " auxiliary variables used");
         }
     }
 
@@ -530,20 +584,24 @@ namespace BVA
         assert(max_var == numVariables);                      // Can be relaxed
         assert((cnf.size() + num_tautologies) == numClauses); // Can be relaxed
 
-        cout << num_tautologies << " tautological clauses has been found" << endl;
+        DEBUG_MSG(cout << num_tautologies << " tautological clauses has been found" << endl;);
     }
 
     const vector<Clause *> &AutomatedReencoder::getCNF() const { return cnf; }
 
     int AutomatedReencoder::maxVar() const { return max_var; }
 
-    void AutomatedReencoder::dump() const
+    void AutomatedReencoder::dumpCNF() const
     {
-        TIME_BLOCK("[BVA] dumping db");
+        TIME_BLOCK("[BVA] Dumping CNF");
         cout << "clauses: " << endl;
         for (Clause *c : cnf)
             cout << *c << endl;
         cout << "occs: " << endl;
+    }
+    void AutomatedReencoder::dumpOccurrences() const
+    {
+        TIME_BLOCK("[BVA] Dumping CNF");
         for (int v = -max_var; v <= max_var; v++)
         {
             if (v == 0)
@@ -554,6 +612,74 @@ namespace BVA
             cout << "   " << v << ':' << endl;
             for (Clause *c : os)
                 cout << "       " << *c << endl;
+        }
+    }
+
+    void AutomatedReencoder::setIterations(int val)
+    {
+        assert(val >= 1);
+        max_iterations = val;
+    }
+
+    void AutomatedReencoder::writeDimacsCNF(const char *fname) const
+    {
+        string msg = "[BVA] Processed CNF successfully written to " + string(fname);
+        TIME_BLOCK(msg.c_str());
+        // Decide whether to write to stdout or a file
+        std::ostream *out = &std::cout;
+        std::ofstream ofs;
+
+        // If fname is not null and not an empty string,
+        // then open the file for writing
+        if (fname != nullptr && fname[0] != '\0')
+        {
+            ofs.open(fname);
+            if (!ofs.is_open())
+            {
+                std::cerr << "Error: Could not open file '" << fname << "' for writing.\n";
+                return;
+            }
+            out = &ofs; // redirect output to the file
+        }
+
+        // Compute the number of clauses
+        const size_t numClauses = cnf.size();
+
+        // Find the maximum variable index by scanning all literals
+        int maxVar = 0;
+        for (auto *clause : cnf)
+        {
+            if (!clause)
+                continue;
+            for (int lit : *clause)
+            {
+                int var = std::abs(lit);
+                if (var > maxVar)
+                {
+                    maxVar = var;
+                }
+            }
+        }
+
+        // Print the "p cnf <maxVar> <numClauses>" line
+        (*out) << "p cnf " << maxVar << " " << numClauses << "\n";
+
+        // Print each clause in DIMACS format (literals followed by 0)
+        for (auto *clause : cnf)
+        {
+            if (!clause)
+                continue;
+            for (int lit : *clause)
+            {
+                (*out) << lit << " ";
+            }
+            (*out) << "0\n";
+        }
+
+        // Close the file if we opened one
+        if (ofs.is_open())
+        {
+            ofs.close();
         }
     }
 
