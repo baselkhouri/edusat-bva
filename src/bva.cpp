@@ -159,10 +159,19 @@ namespace BVA
 
     bool AutomatedReencoder::reductionIncreases(const vector<pair<int, Clause *>> &P_cls, const set<int> &M_lit, const vector<Clause *> &M_cls, int lit) const
     {
+        const int old_red = M_lit.size() * M_cls.size() - M_lit.size() - M_cls.size();
+        
         auto M_litt(M_lit);
         M_litt.insert(lit);
-        const int new_red = (M_litt.size()) * P_cls.size() - M_litt.size() - P_cls.size();
-        const int old_red = M_lit.size() * M_cls.size() - M_lit.size() - M_cls.size();
+        // Count only relevant clauses in P_cls
+        int P_relevant = 0;
+        for (const auto &p : P_cls)
+        {
+            if (p.first == lit)
+            P_relevant++;
+        }
+        assert(P_relevant);
+        const int new_red = (M_litt.size()) * P_relevant - M_litt.size() - P_relevant;
         // cout << "new_red = " << new_red << " old_red " << old_red << endl;
         return new_red > old_red && new_red > 0;
     }
@@ -535,9 +544,13 @@ namespace BVA
         for (Clause *c : cnf)
             cout << *c << endl;
         cout << "occs: " << endl;
-        for (int v = 1; v <= max_var; v++)
+        for (int v = -max_var; v <= max_var; v++)
         {
+            if (v == 0)
+                continue;
             const auto &os = occs(v);
+            if (os.empty())
+                continue;
             cout << "   " << v << ':' << endl;
             for (Clause *c : os)
                 cout << "       " << *c << endl;
