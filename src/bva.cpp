@@ -317,6 +317,12 @@ namespace BVA
         memset(&stats, 0, sizeof(stats));
     }
 
+    AutomatedReencoder::~AutomatedReencoder()
+    {
+        for (int i = 0; i < cnf.size(); i++)
+            delete cnf[i];
+    }
+
     int AutomatedReencoder::num_occs(int a) const { return occs(a).size(); }
 
     // TODO:
@@ -324,8 +330,7 @@ namespace BVA
     // 2) <<MAJOR>> Consider changing the clauses databse to a hash table instead of vector to achieve efficient removal of clauses
     // 3) <<INFO>> Should we propagate all unit clauses and assume no units? The answer seems to be NO...
     // 4) <<MINOR>> Consider directly updating elements in the queue
-    // 5) <<MAJOR>> Deallocating the clauses in the destructor is missing!
-    // 6) <<MINOR>> Consider fixing the method ::reductionIncreases
+    // 5) <<MINOR>> Consider fixing the method ::reductionIncreases
     void AutomatedReencoder::applySimpleBVA()
     {
         TIME_BLOCK("[BVA] Simple Bounded Variable Addition");

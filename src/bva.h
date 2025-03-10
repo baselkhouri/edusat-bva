@@ -61,6 +61,7 @@ private:
 
 public:
     AutomatedReencoder(ProofTracer *);
+    ~AutomatedReencoder();
     int num_occs(int) const;
     void applySimpleBVA();
     void readCNF(std::ifstream &);
