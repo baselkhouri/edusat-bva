@@ -1,6 +1,5 @@
 #include "solver.h"
 #include "options.h"
-#include "bva.h"
 
 // ================== Global Variables ==================
 
