@@ -97,7 +97,7 @@ namespace BVA
         assert(!marked(lit));
     }
 
-    bool AutomatedReencoder::tautological(const vector<int> &c)
+    bool AutomatedReencoder::tautological(const Clause &c)
     {
         imported_clause.clear();
         unsigned idx;
@@ -192,11 +192,6 @@ namespace BVA
         return new_red > old_red && new_red > 0;
     }
 
-    bool AutomatedReencoder::isReplaceableMatch(const vector<int> &M_lit, const vector<Clause *> &M_cls) const
-    {
-        assert(0 && "Needs to be implemented");
-    }
-
     int AutomatedReencoder::introduceNewVariable()
     {
         int x = ++max_var;
@@ -231,7 +226,7 @@ namespace BVA
         Clause *c = new Clause(lits);
         assert(c);
         if (proof)
-            proof->notify_added_clause(*c, false /*learnt*/);
+            proof->notify_added_clause(c->literals, false /*learnt*/);
         for (int lit : *c)
         {
             occs(lit).push_back(c);
@@ -468,7 +463,7 @@ namespace BVA
                 newClause(Q, {l_, x});
                 for (Clause *c : M_cls)
                 {
-                    Clause d = {l_};
+                    vector<int> d = {l_};
                     for (int ll : *c)
                         if (ll != l)
                             d.push_back(ll);
@@ -490,7 +485,7 @@ namespace BVA
             {
                 Clause *d = to_deallocate[i];
                 if (proof)
-                    proof->notify_deleted_clause(*d);
+                    proof->notify_deleted_clause(d->literals);
                 delete d;
             }
 
@@ -563,7 +558,7 @@ namespace BVA
             // Otherwise, we assume this line contains exactly one clause
             // terminated by 0.
             stringstream ss(line);
-            Clause clause;
+            vector<int> clause;
 
             int literal;
             while (ss >> literal)
@@ -687,5 +682,4 @@ namespace BVA
             ofs.close();
         }
     }
-
 };

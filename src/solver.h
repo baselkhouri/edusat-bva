@@ -1,6 +1,7 @@
 #pragma once
 #include "edusat-header.h"
 #include "clause.h"
+#include "bva.h"
 #include "proof.h"
 
 class Solver {
@@ -95,7 +96,7 @@ public:
 		restart_upper(Restart_upper), restart_multiplier(Restart_multiplier) {};
 	~Solver() { delete proof_tracer; }
 	void read_cnf(ifstream& in);
-	void read_cnf(const vector<vector<int> *> &cnf, const int max_var);
+	void read_cnf(const vector<BVA::Clause *> &cnf, const int max_var);
 	VarState get_lit_state(int l) { return state[l2v(l)]; }
 	SolverState _solve();
 	void solve();

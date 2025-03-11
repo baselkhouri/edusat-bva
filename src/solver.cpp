@@ -120,7 +120,7 @@ void Solver::read_cnf(ifstream &in)
 	cout << "Read " << cnf_size() << " clauses in " << read_cnf_time << " secs." << endl;
 }
 
-void Solver::read_cnf(const vector<vector<int> *> &cnf_, const int max_var)
+void Solver::read_cnf(const vector<BVA::Clause *> &cnf_, const int max_var)
 {
 	set<Lit> s;
 	Clause c;
