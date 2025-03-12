@@ -81,7 +81,8 @@ namespace BVA
         signed char marked(int lit) const;
         void mark(int lit);
         void unmark(int lit);
-        bool tautological(const Clause &c);
+        bool tautological(const vector<int> &c);
+        bool duplicate(vector<int> &c);
         int getLeastOccurring(Clause *, int);
         int getSingleLiteralDifference(Clause *, Clause *);
         bool reductionIncreases(const LitMap &, const set<int> &, const vector<Clause *> &, int) const;

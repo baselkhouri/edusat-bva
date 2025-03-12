@@ -12,7 +12,7 @@ double begin_time;
 double read_cnf_time;
 double preprocess_time;
 double timeout = 0.0;
-int bva_length = 100;
+int bva_length = 10000000;
 
 VAR_DEC_HEURISTIC VarDecHeuristic = VAR_DEC_HEURISTIC::MINISAT;
 VAL_DEC_HEURISTIC ValDecHeuristic = VAL_DEC_HEURISTIC::PHASESAVING;

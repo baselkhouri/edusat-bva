@@ -1,4 +1,5 @@
 #include "bva.h"
+#include "profiler.h"
 #include <utility> // for pair
 
 // #define DEBMSG
@@ -15,7 +16,6 @@
     {                  \
     } while (0)
 #endif
-
 
 namespace BVA
 {
@@ -97,7 +97,7 @@ namespace BVA
         assert(!marked(lit));
     }
 
-    bool AutomatedReencoder::tautological(const Clause &c)
+    bool AutomatedReencoder::tautological(const vector<int> &c)
     {
         imported_clause.clear();
         unsigned idx;
@@ -123,6 +123,20 @@ namespace BVA
         for (const auto &lit : c)
             unmark(lit);
         return imported_tautological;
+    }
+
+    bool AutomatedReencoder::duplicate(vector<int> &lits)
+    {
+        Clause c(lits);
+        // Find the specific bucket in the hash table
+        size_t bucketIndex = cnf.bucket(&c);
+
+        // Iterate over all elements in the specific bucket to find the clause
+        // Do not use .find() as it relies on pointer equality
+        for (auto it = cnf.begin(bucketIndex); it != cnf.end(bucketIndex); it++)
+            if (clausesAreIdentical(**it, c))
+                return true;
+        return false;
     }
 
     // Returns the last least occuring literal in c that is not 'other'.
@@ -218,6 +232,7 @@ namespace BVA
 
     Clause *AutomatedReencoder::newClause(priority_queue<pair<size_t, int>> &Q, const vector<int> &lits)
     {
+        PROFILER_START(new_clause);
         Clause *c = new Clause(lits);
         assert(c);
         if (proof)
@@ -235,16 +250,16 @@ namespace BVA
             return *it;
         }
         stats.added += 1;
+        PROFILER_STOP(new_clause);
         return c;
     }
 
     void AutomatedReencoder::removeClause(priority_queue<pair<size_t, int>> &Q, Clause &c, vector<Clause *> &to_deallocate)
     {
+        PROFILER_START(remove_clause);
         int deleted = 0;
-        
         // Find the specific bucket in the hash table
         size_t bucketIndex = cnf.bucket(&c);
-        cout << "Bucket: " << bucketIndex << endl;
 
         // Iterate over all elements in the specific bucket to find the clause
         // Do not use .find() as it relies on pointer equality
@@ -253,6 +268,7 @@ namespace BVA
             if (clausesAreIdentical(**it, c))
             {
                 Clause *clause_to_delete = *it;
+                assert(clause_to_delete->active);
                 to_deallocate.push_back(clause_to_delete);
                 deleted++;
                 clause_to_delete->active = false;
@@ -278,10 +294,12 @@ namespace BVA
         }
 
         stats.deleted += deleted;
+        PROFILER_STOP(remove_clause);
     }
 
     void AutomatedReencoder::popExpiredElementsFromHeap(priority_queue<pair<size_t, int>> &Q)
     {
+        PROFILER_START(pop_expired_elements);
         // Now, since occs have updated for some literals without
         // updating their place in the heap, we ensure the next
         // variable to pop is stale!
@@ -300,15 +318,21 @@ namespace BVA
                 Q.pop();
             }
         }
+        PROFILER_STOP(pop_expired_elements);
     }
 
-    AutomatedReencoder::AutomatedReencoder(ProofTracer *t) : 
-        proof(t), 
-        size_vars(0), 
-        max_var(0), 
-        max_iterations(10000000), 
-        cnf(0, ClauseHasher())
+    AutomatedReencoder::AutomatedReencoder(ProofTracer *t) : proof(t),
+                                                             size_vars(0),
+                                                             max_var(0),
+                                                             max_iterations(10000000),
+                                                             cnf(0, ClauseHasher())
     {
+        ADD_PROFILER_OPERATION(preprocessing);
+        ADD_PROFILER_OPERATION(build_occs_list);
+        ADD_PROFILER_OPERATION(build_priority_queue);
+        ADD_PROFILER_OPERATION(pop_expired_elements);
+        ADD_PROFILER_OPERATION(remove_clause);
+        ADD_PROFILER_OPERATION(new_clause);
         memset(&stats, 0, sizeof(stats));
     }
 
@@ -317,6 +341,7 @@ namespace BVA
         for (Clause *c : cnf)
             delete c;
         cnf.clear();
+        Profiler::getInstance().printAllStatistics();
     }
 
     int AutomatedReencoder::num_occs(int a) const { return occs(a).size(); }
@@ -330,12 +355,14 @@ namespace BVA
     void AutomatedReencoder::applySimpleBVA()
     {
         TIME_BLOCK("[BVA] Simple Bounded Variable Addition");
+        PROFILER_START(preprocessing);
 
         // if (proof)
         //     proof->notify_comment("Applying Simple Bounded Addition Algorithm:");
 
         {
             TIME_BLOCK("[BVA] Building occurrences list");
+            PROFILER_START(build_occs_list);
             assert(max_var <= size_vars);
             otab.resize(2 * size_vars + 2, Occs());
             for (Clause *c : cnf)
@@ -344,12 +371,14 @@ namespace BVA
                 for (int lit : *c)
                     occs(lit).push_back(c);
             }
+            PROFILER_STOP(build_occs_list);
         }
 
         priority_queue<pair<size_t, int>> Q;
 
         {
             TIME_BLOCK("[BVA] Building prority queue");
+            PROFILER_START(build_priority_queue);
             for (int lit = -max_var; lit <= max_var; ++lit)
             {
                 if (lit == 0)
@@ -358,6 +387,7 @@ namespace BVA
                 if (occCount)
                     Q.push({occCount, lit});
             }
+            PROFILER_STOP(build_priority_queue);
         }
 
         int iteration = 0;
@@ -389,13 +419,15 @@ namespace BVA
             assert(P.empty());
 
             DEBUG_MSG(cout << "M_lit = ";
-            for (int lit : M_lit)
-                cout << lit << " ";
-            cout << endl;
-            cout << "M_cls = {" << endl;
-            for (const auto &c : M_cls)
-                cout << "   " << *c << endl;
-            cout << "}" << endl;);
+                      for (int lit : M_lit)
+                          cout
+                      << lit << " ";
+                      cout << endl;
+                      cout << "M_cls = {" << endl;
+                      for (const auto &c : M_cls)
+                          cout
+                      << "   " << *c << endl;
+                      cout << "}" << endl;);
 
             // Lines 5-10
             for (const auto &c : M_cls)
@@ -406,10 +438,11 @@ namespace BVA
                 assert(l_min && l_min != l);
                 const auto &F_l_min = occs(l_min);
                 DEBUG_MSG(cout << "l_min = " << l_min << endl;
-                cout << "F_l_min = {" << endl;
-                for (const auto &c : F_l_min)
-                    cout << "   " << *c << endl;
-                cout << "}" << endl;);
+                          cout << "F_l_min = {" << endl;
+                          for (const auto &c : F_l_min)
+                              cout
+                          << "   " << *c << endl;
+                          cout << "}" << endl;);
                 // Lines 7-10
                 for (const auto &d : F_l_min)
                     if (l == getSingleLiteralDifference(c, d))
@@ -418,17 +451,17 @@ namespace BVA
                         assert(l_);
                         P[l_].push_back(c);
                     }
-                    DEBUG_MSG(
-                        cout << "P = {\n";
-                        for (const auto &entry : P) {
-                            cout << "   " << entry.first << " -> { ";
-                            for (const Clause *clause : entry.second) {
-                                cout << *clause << " ";
-                            }
-                            cout << "}\n";
+                DEBUG_MSG(
+                    cout << "P = {\n";
+                    for (const auto &entry : P) {
+                        cout << "   " << entry.first << " -> { ";
+                        for (const Clause *clause : entry.second)
+                        {
+                            cout << *clause << " ";
                         }
                         cout << "}\n";
-                    );
+                    } cout
+                    << "}\n";);
             }
 
             if (P.size())
@@ -451,12 +484,12 @@ namespace BVA
                     DEBUG_MSG(cout << "REDUCTION INCREASES!" << endl;);
                     M_lit.insert(l_max);
                     M_cls.clear();
-
                     M_cls.insert(M_cls.end(), P[l_max].begin(), P[l_max].end());
                     goto label1;
                 }
             }
-            else DEBUG_MSG(cout << "P is empty" << endl;);
+            else
+                DEBUG_MSG(cout << "P is empty" << endl;);
 
             // Line 17
             if (M_lit.size() == 1)
@@ -492,6 +525,7 @@ namespace BVA
             for (int i = 0; i < to_deallocate.size(); i++)
             {
                 Clause *d = to_deallocate[i];
+                assert(!d->active);
                 if (proof)
                     proof->notify_deleted_clause(d->literals);
                 cnf.erase(d);
@@ -505,10 +539,10 @@ namespace BVA
 
         if (iteration > max_iterations)
             cout
-                 << " -> Reached max iterations limit" << endl;
+                << " -> Reached max iterations limit" << endl;
         else
             cout
-                 << " -> Algorithm ended" << endl;
+                << " -> Algorithm ended" << endl;
         cout << "[BVA] Statistics:" << endl;
         cout << "[BVA]    " << stats.added << " clauses added" << endl;
         cout << "[BVA]    " << stats.deleted << " clauses deleted" << endl;
@@ -520,6 +554,7 @@ namespace BVA
             proof->notify_comment("    " + to_string(stats.deleted) + " clauses deleted");
             proof->notify_comment("    " + to_string(stats.aux_vars) + " auxiliary variables used");
         }
+        PROFILER_STOP(preprocessing);
     }
 
     void AutomatedReencoder::readCNF(ifstream &in)
@@ -583,7 +618,7 @@ namespace BVA
                 if (size_vars < abs(literal))
                     enlarge_marks(abs(literal));
             }
-            if (!tautological(clause))
+            if (!tautological(clause) /* && !duplicate(clause) */)
                 cnf.insert(new Clause(imported_clause));
             else
                 num_tautologies++;
