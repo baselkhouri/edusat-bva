@@ -497,12 +497,12 @@ namespace BVA
                 continue;
 
             vector<Clause *> to_deallocate;
+
             // Lines 18-22
             int x = introduceNewVariable();
-
             for (int l_ : M_lit)
             {
-                Clause *new_clause = new Clause({l_, x});
+                Clause *new_clause = new Clause({x, l_});
                 newClause(Q, new_clause);
                 for (Clause *c : M_cls)
                 {
