@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <limits.h>
 #include <initializer_list>
+#include <unordered_map>
+#include <unordered_set>
 #include <cstring>
 #include <iostream>
 #include <vector>
@@ -38,6 +40,7 @@ namespace BVA
     };
 
     typedef vector<Clause *> Occs;
+    typedef unordered_map<int, vector<Clause*>> LitMap;
 
     // Overload the << operator for Clause
     std::ostream &operator<<(std::ostream &os, const Clause &c);
@@ -70,7 +73,7 @@ namespace BVA
         bool tautological(const Clause &c);
         int getLeastOccurring(Clause *, int);
         int getSingleLiteralDifference(Clause *, Clause *);
-        bool reductionIncreases(const vector<pair<int, Clause *>> &, const set<int> &, const vector<Clause *> &, int) const;
+        bool reductionIncreases(const LitMap &, const set<int> &, const vector<Clause *> &, int) const;
         int introduceNewVariable();
         bool clausesAreIdentical(const Clause &, const Clause &);
         bool unary(const Clause *) const;
