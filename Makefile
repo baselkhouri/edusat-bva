@@ -4,7 +4,7 @@ CXX := g++
 # The existence of 'wrong' code might give us hints where to add new features.
 # The reorder-ctor was ignored because its frustrating to fix the order of the initializers.
 IGNORED_WARNINGS := -Wno-unused-variable -Wno-unused-but-set-variable -Wno-reorder-ctor
-CXXFLAGS := -Wall -std=c++14 -I src $(IGNORED_WARNINGS)
+CXXFLAGS := -Wall -std=c++17 -I src $(IGNORED_WARNINGS)
 
 # Directories
 SRC_DIR := src
