@@ -45,11 +45,20 @@ namespace BVA
     // Overload the << operator for Clause
     std::ostream &operator<<(std::ostream &os, const Clause &c);
 
+    struct ClauseHasher {
+        size_t operator()(const Clause *c) const {
+            size_t h = 0;
+            assert(c);
+            for (int lit : *c)
+                h ^= std::hash<int>{}(lit);
+            return h;
+        }
+    };
+
     class AutomatedReencoder
     {
     private:
         ProofTracer *proof;
-        vector<Clause *> cnf;
         vector<int> imported_clause;
         unsigned size_vars;
         vector<signed char> marks;
@@ -60,6 +69,8 @@ namespace BVA
         {
             int64_t added, deleted, aux_vars;
         } stats;
+
+        unordered_set<Clause *, ClauseHasher> cnf;
 
     private:
         int vidx(int lit) const;
@@ -78,7 +89,7 @@ namespace BVA
         bool clausesAreIdentical(const Clause &, const Clause &);
         bool unary(const Clause *) const;
         Clause *newClause(priority_queue<pair<size_t, int>> &, const vector<int> &);
-        void removeClause(priority_queue<pair<size_t, int>> &, const vector<int> &, vector<Clause *> &);
+        void removeClause(priority_queue<pair<size_t, int>> &, Clause &, vector<Clause *> &);
         void popExpiredElementsFromHeap(priority_queue<pair<size_t, int>> &);
         void dumpCNF() const;
         void dumpOccurrences() const;
@@ -89,7 +100,7 @@ namespace BVA
         int num_occs(int) const;
         void applySimpleBVA();
         void readCNF(std::ifstream &);
-        const vector<Clause *> &getCNF() const;
+        const unordered_set<Clause *, ClauseHasher> &getCNF() const { return cnf; }
         int maxVar() const;
         void setIterations(int);
         void writeDimacsCNF(const char *) const;

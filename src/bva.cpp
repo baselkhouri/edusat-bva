@@ -227,54 +227,54 @@ namespace BVA
             occs(lit).push_back(c);
             Q.push({occs(lit).size(), lit});
         }
-        cnf.push_back(c);
+        auto [it, inserted] = cnf.insert(c);
+        if (!inserted)
+        {
+            // Clause already exists
+            delete c;
+            return *it;
+        }
         stats.added += 1;
         return c;
     }
 
-    void AutomatedReencoder::removeClause(priority_queue<pair<size_t, int>> &Q, const vector<int> &lits, vector<Clause *> &to_deallocate)
+    void AutomatedReencoder::removeClause(priority_queue<pair<size_t, int>> &Q, Clause &c, vector<Clause *> &to_deallocate)
     {
         int deleted = 0;
+        
+        // Find the specific bucket in the hash table
+        size_t bucketIndex = cnf.bucket(&c);
+        cout << "Bucket: " << bucketIndex << endl;
 
-        // Remove from cnf
-        const auto end = cnf.end();
-        auto i = cnf.begin();
-        for (auto j = i; j != end; j++)
+        // Iterate over all elements in the specific bucket to find the clause
+        // Do not use .find() as it relies on pointer equality
+        for (auto it = cnf.begin(bucketIndex); it != cnf.end(bucketIndex); it++)
         {
-            Clause *d = *i++ = *j;
-            if (clausesAreIdentical(*d, lits))
+            if (clausesAreIdentical(**it, c))
             {
-                i--;
-                to_deallocate.push_back(d);
+                Clause *clause_to_delete = *it;
+                to_deallocate.push_back(clause_to_delete);
                 deleted++;
+                clause_to_delete->active = false;
+                assert(clause_to_delete);
             }
         }
-        // assert(deleted >= 1); // TODO: While I believe it is safe, we need to make sure that can happen
-        assert(i + deleted == end); // can be relaxed?
-        cnf.resize(i - cnf.begin());
 
         // Remove from occs
-        const int sz = to_deallocate.size();
-        int index = to_deallocate.size() - deleted;
-        while (index < sz)
+        for (int lit : c)
         {
-            Clause *c = to_deallocate[index++];
-            assert(c);
-            for (int lit : *c)
+            auto &os = occs(lit);
+            const auto end = os.end();
+            auto i = os.begin();
+            for (auto j = i; j != end; j++)
             {
-                auto &os = occs(lit);
-                const auto end = os.end();
-                auto i = os.begin();
-                for (auto j = i; j != end; j++)
-                {
-                    const Clause *d = *i++ = *j;
-                    if (c == d)
-                        i--;
-                }
-                assert(i + 1 == end);
-                os.resize(i - os.begin());
-                Q.push({occs(lit).size(), lit});
+                const Clause *d = *i++ = *j;
+                if (!d->active)
+                    i--;
             }
+            assert(i + 1 == end);
+            os.resize(i - os.begin());
+            Q.push({occs(lit).size(), lit});
         }
 
         stats.deleted += deleted;
@@ -302,15 +302,21 @@ namespace BVA
         }
     }
 
-    AutomatedReencoder::AutomatedReencoder(ProofTracer *t) : proof(t), size_vars(0), max_var(0), max_iterations(10000000)
+    AutomatedReencoder::AutomatedReencoder(ProofTracer *t) : 
+        proof(t), 
+        size_vars(0), 
+        max_var(0), 
+        max_iterations(10000000), 
+        cnf(0, ClauseHasher())
     {
         memset(&stats, 0, sizeof(stats));
     }
 
     AutomatedReencoder::~AutomatedReencoder()
     {
-        for (int i = 0; i < cnf.size(); i++)
-            delete cnf[i];
+        for (Clause *c : cnf)
+            delete c;
+        cnf.clear();
     }
 
     int AutomatedReencoder::num_occs(int a) const { return occs(a).size(); }
@@ -382,7 +388,7 @@ namespace BVA
             LitMap P = {};
             assert(P.empty());
 
-            DEBUG_MSG(cout << "M_lit = " <<;
+            DEBUG_MSG(cout << "M_lit = ";
             for (int lit : M_lit)
                 cout << lit << " ";
             cout << endl;
@@ -459,12 +465,13 @@ namespace BVA
             vector<Clause *> to_deallocate;
             // Lines 18-22
             int x = introduceNewVariable();
+
             for (int l_ : M_lit)
             {
                 newClause(Q, {l_, x});
                 for (Clause *c : M_cls)
                 {
-                    vector<int> d = {l_};
+                    Clause d = {l_};
                     for (int ll : *c)
                         if (ll != l)
                             d.push_back(ll);
@@ -487,6 +494,7 @@ namespace BVA
                 Clause *d = to_deallocate[i];
                 if (proof)
                     proof->notify_deleted_clause(d->literals);
+                cnf.erase(d);
                 delete d;
             }
 
@@ -576,7 +584,7 @@ namespace BVA
                     enlarge_marks(abs(literal));
             }
             if (!tautological(clause))
-                cnf.push_back(new Clause(imported_clause));
+                cnf.insert(new Clause(imported_clause));
             else
                 num_tautologies++;
         }
@@ -587,8 +595,6 @@ namespace BVA
 
         DEBUG_MSG(cout << num_tautologies << " tautological clauses has been found" << endl;);
     }
-
-    const vector<Clause *> &AutomatedReencoder::getCNF() const { return cnf; }
 
     int AutomatedReencoder::maxVar() const { return max_var; }
 
