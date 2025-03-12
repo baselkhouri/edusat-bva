@@ -173,19 +173,14 @@ namespace BVA
         return diffs > 1 ? 0 : diff_lit;
     }
 
-    bool AutomatedReencoder::reductionIncreases(const vector<pair<int, Clause *>> &P_cls, const set<int> &M_lit, const vector<Clause *> &M_cls, int lit) const
+    bool AutomatedReencoder::reductionIncreases(const LitMap &P_cls, const set<int> &M_lit, const vector<Clause *> &M_cls, int lit) const
     {
         const int old_red = M_lit.size() * M_cls.size() - M_lit.size() - M_cls.size();
 
         auto M_litt(M_lit);
         M_litt.insert(lit);
         // Count only relevant clauses in P_cls
-        int P_relevant = 0;
-        for (const auto &p : P_cls)
-        {
-            if (p.first == lit)
-                P_relevant++;
-        }
+        int P_relevant = P_cls.at(lit).size();
         assert(P_relevant);
         const int new_red = (M_litt.size()) * P_relevant - M_litt.size() - P_relevant;
         DEBUG_MSG(cout << "new_red = " << new_red << " old_red " << old_red << endl);
@@ -384,7 +379,7 @@ namespace BVA
             set<int> M_lit = {l};
 
         label1:
-            vector<pair<int, Clause *>> P = {};
+            LitMap P = {};
             assert(P.empty());
 
             DEBUG_MSG(cout << "M_lit = " <<;
@@ -415,12 +410,19 @@ namespace BVA
                     {
                         int l_ = getSingleLiteralDifference(d, c);
                         assert(l_);
-                        P.push_back({l_, c});
+                        P[l_].push_back(c);
                     }
-                DEBUG_MSG(cout << "P = {" << endl;
-                for (const auto &p : P)
-                    cout << "   <" << p.first << ", " << *p.second << ">" << endl;
-                cout << "}" << endl;);
+                    DEBUG_MSG(
+                        cout << "P = {\n";
+                        for (const auto &entry : P) {
+                            cout << "   " << entry.first << " -> { ";
+                            for (const Clause *clause : entry.second) {
+                                cout << *clause << " ";
+                            }
+                            cout << "}\n";
+                        }
+                        cout << "}\n";
+                    );
             }
 
             if (P.size())
@@ -443,9 +445,8 @@ namespace BVA
                     DEBUG_MSG(cout << "REDUCTION INCREASES!" << endl;);
                     M_lit.insert(l_max);
                     M_cls.clear();
-                    for (const auto &p : P)
-                        if (p.first == l_max)
-                            M_cls.push_back(p.second);
+
+                    M_cls.insert(M_cls.end(), P[l_max].begin(), P[l_max].end());
                     goto label1;
                 }
             }
