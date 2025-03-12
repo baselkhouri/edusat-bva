@@ -81,15 +81,15 @@ namespace BVA
         signed char marked(int lit) const;
         void mark(int lit);
         void unmark(int lit);
-        bool tautological(const vector<int> &c);
-        bool duplicate(vector<int> &c);
+        bool tautological(const Clause &c);
+        Clause* find(Clause &c);
         int getLeastOccurring(Clause *, int);
         int getSingleLiteralDifference(Clause *, Clause *);
         bool reductionIncreases(const LitMap &, const set<int> &, const vector<Clause *> &, int) const;
         int introduceNewVariable();
         bool clausesAreIdentical(const Clause &, const Clause &);
         bool unary(const Clause *) const;
-        Clause *newClause(priority_queue<pair<size_t, int>> &, const vector<int> &);
+        Clause *newClause(priority_queue<pair<size_t, int>> &, Clause *);
         void removeClause(priority_queue<pair<size_t, int>> &, Clause &, vector<Clause *> &);
         void popExpiredElementsFromHeap(priority_queue<pair<size_t, int>> &);
         void dumpCNF() const;

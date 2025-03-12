@@ -97,7 +97,7 @@ namespace BVA
         assert(!marked(lit));
     }
 
-    bool AutomatedReencoder::tautological(const vector<int> &c)
+    bool AutomatedReencoder::tautological(const Clause &c)
     {
         imported_clause.clear();
         unsigned idx;
@@ -125,18 +125,22 @@ namespace BVA
         return imported_tautological;
     }
 
-    bool AutomatedReencoder::duplicate(vector<int> &lits)
+    Clause *AutomatedReencoder::find(Clause &c)
     {
-        Clause c(lits);
+        if (cnf.empty())
+            return nullptr;
+
         // Find the specific bucket in the hash table
         size_t bucketIndex = cnf.bucket(&c);
 
         // Iterate over all elements in the specific bucket to find the clause
         // Do not use .find() as it relies on pointer equality
-        for (auto it = cnf.begin(bucketIndex); it != cnf.end(bucketIndex); it++)
-            if (clausesAreIdentical(**it, c))
-                return true;
-        return false;
+        for (auto it = cnf.begin(bucketIndex); it != cnf.end(bucketIndex); it++) {
+            if (clausesAreIdentical(**it, c)) {
+                return *it;
+            }
+        }
+        return nullptr;
     }
 
     // Returns the last least occuring literal in c that is not 'other'.
@@ -230,10 +234,9 @@ namespace BVA
         return c->size() == 1;
     }
 
-    Clause *AutomatedReencoder::newClause(priority_queue<pair<size_t, int>> &Q, const vector<int> &lits)
+    Clause *AutomatedReencoder::newClause(priority_queue<pair<size_t, int>> &Q, Clause *c)
     {
         PROFILER_START(new_clause);
-        Clause *c = new Clause(lits);
         assert(c);
         if (proof)
             proof->notify_added_clause(c->literals, false /*learnt*/);
@@ -242,13 +245,7 @@ namespace BVA
             occs(lit).push_back(c);
             Q.push({occs(lit).size(), lit});
         }
-        auto [it, inserted] = cnf.insert(c);
-        if (!inserted)
-        {
-            // Clause already exists
-            delete c;
-            return *it;
-        }
+        cnf.insert(c);
         stats.added += 1;
         PROFILER_STOP(new_clause);
         return c;
@@ -257,6 +254,10 @@ namespace BVA
     void AutomatedReencoder::removeClause(priority_queue<pair<size_t, int>> &Q, Clause &c, vector<Clause *> &to_deallocate)
     {
         PROFILER_START(remove_clause);
+
+        // Sanity check
+        assert(!cnf.empty());
+
         int deleted = 0;
         // Find the specific bucket in the hash table
         size_t bucketIndex = cnf.bucket(&c);
@@ -501,7 +502,8 @@ namespace BVA
 
             for (int l_ : M_lit)
             {
-                newClause(Q, {l_, x});
+                Clause *new_clause = new Clause({l_, x});
+                newClause(Q, new_clause);
                 for (Clause *c : M_cls)
                 {
                     Clause d = {l_};
@@ -515,10 +517,10 @@ namespace BVA
             // Lines 23-24
             for (const auto &c : M_cls)
             {
-                vector<int> d = {-x};
+                Clause *d = new Clause({-x});
                 for (int lit : *c)
                     if (lit != l)
-                        d.push_back(lit);
+                        d->push_back(lit);
                 newClause(Q, d);
             }
 
@@ -602,7 +604,7 @@ namespace BVA
             // Otherwise, we assume this line contains exactly one clause
             // terminated by 0.
             stringstream ss(line);
-            vector<int> clause;
+            Clause clause;
 
             int literal;
             while (ss >> literal)
@@ -618,12 +620,11 @@ namespace BVA
                 if (size_vars < abs(literal))
                     enlarge_marks(abs(literal));
             }
-            if (!tautological(clause) /* && !duplicate(clause) */)
+            if (!tautological(clause) && find(clause) == nullptr)
                 cnf.insert(new Clause(imported_clause));
             else
                 num_tautologies++;
         }
-
         assert(pLineFound);
         assert(max_var == numVariables);                      // Can be relaxed
         assert((cnf.size() + num_tautologies) == numClauses); // Can be relaxed
