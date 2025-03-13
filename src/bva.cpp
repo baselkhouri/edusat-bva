@@ -269,6 +269,8 @@ namespace BVA
         // Sanity check
         assert(!cnf.empty());
 
+        DEBUG_MSG(cout << "Removing clause " << c << endl;);
+
         int deleted = 0;
         // Find the specific bucket in the hash table
         size_t bucketIndex = cnf.bucket(&c);
@@ -302,7 +304,7 @@ namespace BVA
                     i--;
             }
             assert(i != end);
-            if (i + 1 != end) DEBUG_MSG(cout << "Deleted more than one!" << endl);
+            if (i + 1 != end) DEBUG_MSG(cout << "Deleted more than one clause from " << lit << "'s occurances!" << endl);
             os.resize(i - os.begin());
             Q.push({occs(lit).size(), lit});
         }
@@ -417,8 +419,6 @@ namespace BVA
             const auto &F_l = occs(l);
             assert(occCount == F_l.size());
 
-            DEBUG_MSG(cout << "l = " << l << endl);
-
             vector<Clause *> M_cls(F_l);
             set<int> M_lit = {l};
 
@@ -426,16 +426,7 @@ namespace BVA
             LitMap P = {};
             assert(P.empty());
 
-            DEBUG_MSG(cout << "M_lit = ";
-                      for (int lit : M_lit)
-                          cout
-                      << lit << " ";
-                      cout << endl;
-                      cout << "M_cls = {" << endl;
-                      for (const auto &c : M_cls)
-                          cout
-                      << "   " << *c << endl;
-                      cout << "}" << endl;);
+            DEBUG_MSG(dumpReplacebleMatching(M_lit, M_cls););
 
             // Lines 5-10
             for (const auto &c : M_cls)
@@ -445,12 +436,7 @@ namespace BVA
                 int l_min = getLeastOccurring(c, l);
                 assert(l_min && l_min != l);
                 const auto &F_l_min = occs(l_min);
-                DEBUG_MSG(cout << "l_min = " << l_min << endl;
-                          cout << "F_l_min = {" << endl;
-                          for (const auto &c : F_l_min)
-                              cout
-                          << "   " << *c << endl;
-                          cout << "}" << endl;);
+
                 // Lines 7-10
                 for (const auto &d : F_l_min)
                     if (l == getSingleLiteralDifference(c, d))
@@ -460,17 +446,8 @@ namespace BVA
                         if (!existsInLitMap(P, l_, *c))
                             P[l_].push_back(c);
                     }
-                DEBUG_MSG(
-                    cout << "P = {\n";
-                    for (const auto &entry : P) {
-                        cout << "   " << entry.first << " -> { ";
-                        for (const Clause *clause : entry.second)
-                        {
-                            cout << *clause << " ";
-                        }
-                        cout << "}\n";
-                    } cout
-                    << "}\n";);
+                
+                DEBUG_MSG(dumpLitMap(P););
             }
 
             if (P.size())
@@ -548,22 +525,23 @@ namespace BVA
         }
 
         if (iteration > max_iterations)
-            cout
-                << " -> Reached max iterations limit" << endl;
+            cout << " -> Reached max iterations limit" << endl;
         else
-            cout
-                << " -> Algorithm ended" << endl;
+            cout << " -> Algorithm ended" << endl;
+
         cout << "[BVA] Statistics:" << endl;
         cout << "[BVA]    " << stats.added << " clauses added" << endl;
         cout << "[BVA]    " << stats.deleted << " clauses deleted" << endl;
         cout << "[BVA]    " << stats.deleted - stats.added << " clauses reduced in total" << endl;
         cout << "[BVA]    " << stats.aux_vars << " auxiliary variables used" << endl;
+        
         if (proof)
         {
             proof->notify_comment("    " + to_string(stats.added) + " clauses added");
             proof->notify_comment("    " + to_string(stats.deleted) + " clauses deleted");
             proof->notify_comment("    " + to_string(stats.aux_vars) + " auxiliary variables used");
         }
+
         PROFILER_STOP(preprocessing);
     }
 
@@ -732,5 +710,32 @@ namespace BVA
         {
             ofs.close();
         }
+    }
+
+    void AutomatedReencoder::dumpReplacebleMatching(const set<int> &M_lit, const vector<Clause *> &M_cls) const
+    {
+        cout << "M_lit = ";
+        for (int lit : M_lit)
+            cout << lit << " ";
+        cout << endl;
+        cout << "M_cls = {" << endl;
+        for (const auto &c : M_cls)
+            cout << "   " << *c << endl;
+        cout << "}" << endl;
+    }
+
+    void AutomatedReencoder::dumpLitMap(const LitMap &P_cls) const
+    {
+        cout << "P = {" << endl;
+        for (const auto &entry : P_cls)
+        {
+            cout << "   " << entry.first << " -> { ";
+            for (const Clause *clause : entry.second)
+            {
+                cout << *clause << " ";
+            }
+            cout << "}" << endl;
+        }
+        cout << "}" << endl;
     }
 };

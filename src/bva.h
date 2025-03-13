@@ -95,6 +95,8 @@ namespace BVA
         void popExpiredElementsFromHeap(priority_queue<pair<size_t, int>> &);
         void dumpCNF() const;
         void dumpOccurrences() const;
+        void dumpReplacebleMatching(const set<int> &M_lit, const vector<Clause *> &M_cls) const;
+        void dumpLitMap(const LitMap &P_cls) const;
 
     public:
         AutomatedReencoder(ProofTracer *);
