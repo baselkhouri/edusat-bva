@@ -83,6 +83,7 @@ namespace BVA
         void unmark(int lit);
         bool tautological(const Clause &c);
         Clause* find(Clause &c);
+        bool existsInLitMap(const LitMap &, int, Clause &);
         int getLeastOccurring(Clause *, int);
         int getSingleLiteralDifference(Clause *, Clause *);
         bool reductionIncreases(const LitMap &, const set<int> &, const vector<Clause *> &, int) const;

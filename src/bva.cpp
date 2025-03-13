@@ -143,6 +143,17 @@ namespace BVA
         return nullptr;
     }
 
+    bool AutomatedReencoder::existsInLitMap(const LitMap &P, int l, Clause &c)
+    {
+        auto it = P.find(l);
+        if (it == P.end())
+            return false;
+        for (const auto &d : it->second)
+            if (clausesAreIdentical(*d, c))
+                return true;
+        return false;
+    }
+
     // Returns the last least occuring literal in c that is not 'other'.
     // In case the clause is unary, returns 0.
     int AutomatedReencoder::getLeastOccurring(Clause *c, int other)
@@ -269,6 +280,7 @@ namespace BVA
             if (clausesAreIdentical(**it, c))
             {
                 Clause *clause_to_delete = *it;
+                // We must not have duplicates because P doesn't have duplicates!
                 assert(clause_to_delete->active);
                 to_deallocate.push_back(clause_to_delete);
                 deleted++;
@@ -289,7 +301,8 @@ namespace BVA
                 if (!d->active)
                     i--;
             }
-            assert(i + 1 == end);
+            assert(i != end);
+            if (i + 1 != end) DEBUG_MSG(cout << "Deleted more than one!" << endl);
             os.resize(i - os.begin());
             Q.push({occs(lit).size(), lit});
         }
@@ -450,7 +463,8 @@ namespace BVA
                     {
                         int l_ = getSingleLiteralDifference(d, c);
                         assert(l_);
-                        P[l_].push_back(c);
+                        if (!existsInLitMap(P, l_, *c))
+                            P[l_].push_back(c);
                     }
                 DEBUG_MSG(
                     cout << "P = {\n";
@@ -620,7 +634,7 @@ namespace BVA
                 if (size_vars < abs(literal))
                     enlarge_marks(abs(literal));
             }
-            if (!tautological(clause) && find(clause) == nullptr)
+            if (!tautological(clause))
                 cnf.insert(new Clause(imported_clause));
             else
                 num_tautologies++;
