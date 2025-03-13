@@ -185,7 +185,6 @@ void Solver::read_cnf(const unordered_set<BVA::Clause *, BVA::ClauseHasher> &cnf
 	}
 	if (VarDecHeuristic == VAR_DEC_HEURISTIC::MINISAT)
 		reset_iterators();
-	// TODO: Time calculation inaccurate..
 	read_cnf_time = cpuTime() - solving_begin_time;
 	cout << "Read " << cnf_size() << " clauses in " << read_cnf_time << " secs." << endl;;
 }

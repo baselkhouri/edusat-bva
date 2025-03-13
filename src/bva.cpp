@@ -360,12 +360,6 @@ namespace BVA
 
     int AutomatedReencoder::num_occs(int a) const { return occs(a).size(); }
 
-    // TODO:
-    // 1) <<MINOR>> Consider converting P intro a priority queue
-    // 2) <<MAJOR>> Consider changing the clauses databse to a hash table instead of vector to achieve efficient removal of clauses
-    // 3) <<INFO>> Should we propagate all unit clauses and assume no units? The answer seems to be NO...
-    // 4) <<MINOR>> Consider directly updating elements in the queue
-    // 5) <<MINOR>> Consider fixing the method ::reductionIncreases
     void AutomatedReencoder::applySimpleBVA()
     {
         TIME_BLOCK("[BVA] Simple Bounded Variable Addition");
