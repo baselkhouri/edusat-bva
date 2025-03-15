@@ -100,10 +100,7 @@ extern int verbose;
 extern int preprocess;
 extern string proof_path;
 extern double timeout;
-extern double begin_time;
 extern double solving_begin_time;
-extern double read_cnf_time;
-extern double preprocess_time;
 extern VAR_DEC_HEURISTIC VarDecHeuristic;
 extern VAL_DEC_HEURISTIC ValDecHeuristic;
 
@@ -158,6 +155,6 @@ inline void AssertCheck(bool cond, string func_name, int line, string msg = "") 
 	if (cond) return;
 	cout << "Assertion fail" << endl;
 	cout << msg << endl;
-	cout << func_name << " line " << line << endl;
+			cout << func_name << " line " << line << endl;
 	exit(1);
 }

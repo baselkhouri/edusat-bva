@@ -61,7 +61,6 @@ void Solver::read_cnf(ifstream &in)
 	in >> clauses;
 	if (!vars || !clauses)
 		Abort("Expecting non-zero variables and clauses", 1);
-	cout << "vars: " << vars << " clauses: " << clauses << endl;
 	cnf.reserve(clauses);
 
 	set_nvars(vars);
@@ -116,8 +115,6 @@ void Solver::read_cnf(ifstream &in)
 	}
 	if (VarDecHeuristic == VAR_DEC_HEURISTIC::MINISAT)
 		reset_iterators();
-	read_cnf_time = cpuTime() - solving_begin_time;
-	cout << "Read " << cnf_size() << " clauses in " << read_cnf_time << " secs." << endl;
 }
 
 void Solver::read_cnf(const unordered_set<BVA::Clause *, BVA::ClauseHasher> &cnf_, const int max_var)
@@ -128,7 +125,6 @@ void Solver::read_cnf(const unordered_set<BVA::Clause *, BVA::ClauseHasher> &cnf
 	const int num_clauses = cnf_.size();
 	if (!max_var || !num_clauses)
 		Abort("Expecting non-zero variables and clauses", 1);
-	cout << "vars: " << max_var << " clauses: " << num_clauses << endl;
 	cnf.reserve(num_clauses);
 
 	set_nvars(max_var);
@@ -185,8 +181,6 @@ void Solver::read_cnf(const unordered_set<BVA::Clause *, BVA::ClauseHasher> &cnf
 	}
 	if (VarDecHeuristic == VAR_DEC_HEURISTIC::MINISAT)
 		reset_iterators();
-	read_cnf_time = cpuTime() - solving_begin_time;
-	cout << "Read " << cnf_size() << " clauses in " << read_cnf_time << " secs." << endl;;
 }
 
 #pragma endregion readCNF
@@ -777,7 +771,6 @@ void Solver::restart()
 
 void Solver::solve()
 {
-	cout << "Solving..." << endl;
 	SolverState res = _solve();
 	Assert(res == SolverState::SAT || res == SolverState::UNSAT || res == SolverState::TIMEOUT);
 	print_stats();
