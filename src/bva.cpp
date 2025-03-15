@@ -1,6 +1,5 @@
 #include "bva.h"
-#include "profiler.h"
-#include <utility> // for pair
+#include <utility>
 
 // #define DEBMSG
 
@@ -247,7 +246,6 @@ namespace BVA
 
     Clause *AutomatedReencoder::newClause(priority_queue<pair<size_t, int>> &Q, Clause *c)
     {
-        PROFILER_START(new_clause);
         assert(c);
         if (proof)
             proof->notify_added_clause(c->literals, false /*learnt*/);
@@ -258,14 +256,11 @@ namespace BVA
         }
         cnf.insert(c);
         stats.added += 1;
-        PROFILER_STOP(new_clause);
         return c;
     }
 
     void AutomatedReencoder::removeClause(priority_queue<pair<size_t, int>> &Q, Clause &c, vector<Clause *> &to_deallocate)
     {
-        PROFILER_START(remove_clause);
-
         // Sanity check
         assert(!cnf.empty());
 
@@ -310,12 +305,10 @@ namespace BVA
         }
 
         stats.deleted += deleted;
-        PROFILER_STOP(remove_clause);
     }
 
     void AutomatedReencoder::popExpiredElementsFromHeap(priority_queue<pair<size_t, int>> &Q)
     {
-        PROFILER_START(pop_expired_elements);
         // Now, since occs have updated for some literals without
         // updating their place in the heap, we ensure the next
         // variable to pop is stale!
@@ -334,7 +327,6 @@ namespace BVA
                 Q.pop();
             }
         }
-        PROFILER_STOP(pop_expired_elements);
     }
 
     AutomatedReencoder::AutomatedReencoder(ProofTracer *t) : proof(t),
@@ -343,12 +335,6 @@ namespace BVA
                                                              max_iterations(10000000),
                                                              cnf(0, ClauseHasher())
     {
-        ADD_PROFILER_OPERATION(preprocessing);
-        ADD_PROFILER_OPERATION(build_occs_list);
-        ADD_PROFILER_OPERATION(build_priority_queue);
-        ADD_PROFILER_OPERATION(pop_expired_elements);
-        ADD_PROFILER_OPERATION(remove_clause);
-        ADD_PROFILER_OPERATION(new_clause);
         memset(&stats, 0, sizeof(stats));
     }
 
@@ -357,22 +343,19 @@ namespace BVA
         for (Clause *c : cnf)
             delete c;
         cnf.clear();
-        Profiler::getInstance().printAllStatistics();
     }
 
     int AutomatedReencoder::num_occs(int a) const { return occs(a).size(); }
 
     void AutomatedReencoder::applySimpleBVA()
     {
-        TIME_BLOCK("[BVA] Simple Bounded Variable Addition");
-        PROFILER_START(preprocessing);
+        TIME_BLOCK("[PREPROCESSOR] Simple Bounded Variable Addition");
 
         // if (proof)
         //     proof->notify_comment("Applying Simple Bounded Addition Algorithm:");
 
         {
-            TIME_BLOCK("[BVA] Building occurrences list");
-            PROFILER_START(build_occs_list);
+            TIME_BLOCK("[PREPROCESSOR] Building occurrences list");
             assert(max_var <= size_vars);
             otab.resize(2 * size_vars + 2, Occs());
             for (Clause *c : cnf)
@@ -381,14 +364,12 @@ namespace BVA
                 for (int lit : *c)
                     occs(lit).push_back(c);
             }
-            PROFILER_STOP(build_occs_list);
         }
 
         priority_queue<pair<size_t, int>> Q;
 
         {
-            TIME_BLOCK("[BVA] Building prority queue");
-            PROFILER_START(build_priority_queue);
+            TIME_BLOCK("[PREPROCESSOR] Building prority queue");
             for (int lit = -max_var; lit <= max_var; ++lit)
             {
                 if (lit == 0)
@@ -397,7 +378,6 @@ namespace BVA
                 if (occCount)
                     Q.push({occCount, lit});
             }
-            PROFILER_STOP(build_priority_queue);
         }
 
         int iteration = 0;
@@ -407,7 +387,7 @@ namespace BVA
             // Check if maximum iteration limit has been reached
             if (++iteration > max_iterations)
                 break;
-            UPDATE_PROGRESS("[BVA] Iteration " + to_string(iteration));
+            // UPDATE_PROGRESS("[PREPROCESSOR] Iteration " + to_string(iteration));
 
             // Ensure the next element is not stale
             popExpiredElementsFromHeap(Q);
@@ -529,25 +509,24 @@ namespace BVA
         else
             cout << " -> Algorithm ended" << endl;
 
-        cout << "[BVA] Statistics:" << endl;
-        cout << "[BVA]    " << stats.added << " clauses added" << endl;
-        cout << "[BVA]    " << stats.deleted << " clauses deleted" << endl;
-        cout << "[BVA]    " << stats.deleted - stats.added << " clauses reduced in total" << endl;
-        cout << "[BVA]    " << stats.aux_vars << " auxiliary variables used" << endl;
+        cout << "[PREPROCESSOR] Statistics:" << endl;
+        cout << "[PREPROCESSOR]    " << stats.added << " clauses added" << endl;
+        cout << "[PREPROCESSOR]    " << stats.deleted << " clauses deleted" << endl;
+        cout << "[PREPROCESSOR]    " << stats.deleted - stats.added << " clauses reduced in total" << endl;
+        cout << "[PREPROCESSOR]    " << stats.aux_vars << " auxiliary variables used" << endl;
         
         if (proof)
         {
             proof->notify_comment("    " + to_string(stats.added) + " clauses added");
             proof->notify_comment("    " + to_string(stats.deleted) + " clauses deleted");
+            proof->notify_comment("    " + to_string(stats.deleted - stats.added) + " clauses reduced");
             proof->notify_comment("    " + to_string(stats.aux_vars) + " auxiliary variables used");
         }
-
-        PROFILER_STOP(preprocessing);
     }
 
     void AutomatedReencoder::readCNF(ifstream &in)
     {
-        TIME_BLOCK("[BVA] reading cnf");
+        TIME_BLOCK("[PREPROCESSOR] Reading CNF");
         int64_t num_tautologies = 0;
         assert(cnf.empty());
         string line;
@@ -622,7 +601,7 @@ namespace BVA
 
     void AutomatedReencoder::dumpCNF() const
     {
-        TIME_BLOCK("[BVA] Dumping CNF");
+        TIME_BLOCK("[PREPROCESSOR] Dumping CNF");
         cout << "clauses: " << endl;
         for (Clause *c : cnf)
             cout << *c << endl;
@@ -630,7 +609,7 @@ namespace BVA
     }
     void AutomatedReencoder::dumpOccurrences() const
     {
-        TIME_BLOCK("[BVA] Dumping CNF");
+        TIME_BLOCK("[PREPROCESSOR] Dumping CNF");
         for (int v = -max_var; v <= max_var; v++)
         {
             if (v == 0)
@@ -652,7 +631,7 @@ namespace BVA
 
     void AutomatedReencoder::writeDimacsCNF(const char *fname) const
     {
-        string msg = "[BVA] Processed CNF successfully written to " + string(fname);
+        string msg = "[PREPROCESSOR] Processed CNF successfully written to " + string(fname);
         TIME_BLOCK(msg.c_str());
         // Decide whether to write to stdout or a file
         std::ostream *out = &std::cout;

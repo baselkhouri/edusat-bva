@@ -8,9 +8,6 @@ int preprocess = 0;
 string proof_path = "";
 string bva_export_path = "";
 double solving_begin_time;
-double begin_time;
-double read_cnf_time;
-double preprocess_time;
 double timeout = 0.0;
 int bva_length = 10000000;
 
@@ -34,10 +31,6 @@ unordered_map<string, option*> options = {
 /******************  main ******************************/
 
 int main(int argc, char** argv){
-	begin_time = cpuTime();
-	cout << "======================================================" << endl;
-	cout << "This is hacked edusat by Basel and Thomas :)" << endl;
-	cout << "======================================================" << endl << endl;
 	parse_options(argc, argv);
 	ifstream in (argv[argc - 1]);
 	if (!in.good())
@@ -45,25 +38,31 @@ int main(int argc, char** argv){
 	if (options["proof"]->val() != "") {
 		std::string out(options["proof"]->val());
 		S.set_proof_file(out);
-		cout << "Dumping proof to " << out << endl << endl;
 	}
-	cout << "Reading CNF from " << argv[argc - 1] << endl;
+	TIME_BLOCK("[   EDUSAT   ] Solve");
 	if (preprocess) {
 		BVA::AutomatedReencoder processor(S.proof_tracer);
-		processor.setIterations(bva_length);
-		processor.readCNF(in);
-		processor.applySimpleBVA();
-		if (!bva_export_path.empty())
-			processor.writeDimacsCNF(bva_export_path.c_str());
-		// processor.writeDimacsCNF(0);
-		preprocess_time = cpuTime() - begin_time;
-		solving_begin_time = cpuTime();
-		S.read_cnf(processor.getCNF(), processor.maxVar());
+		{
+			TIME_BLOCK("[   EDUSAT   ] Preprocessing");
+			processor.setIterations(bva_length);
+			processor.readCNF(in);
+			processor.applySimpleBVA();
+			if (!bva_export_path.empty())
+				processor.writeDimacsCNF(bva_export_path.c_str());
+		}
+		{
+			TIME_BLOCK("[   EDUSAT   ] Reading CNF");
+			S.read_cnf(processor.getCNF(), processor.maxVar());
+		}
 	} else {
-		solving_begin_time = cpuTime();
+		TIME_BLOCK("[   EDUSAT   ] Reading CNF");
 		S.read_cnf(in);
 	}
 	in.close();
-	S.solve();
+	solving_begin_time = cpuTime();
+	{
+		TIME_BLOCK("[   EDUSAT   ] Search");
+		S.solve();
+	}
 	return 0;
 }
