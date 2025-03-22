@@ -55,8 +55,14 @@ else
 fi
 # Loop through the files safely
 while IFS= read -r TEST_INPUT; do
-    OUTPUT=$($BINARY -proof $PROOF_FILE $TEST_INPUT)
+    OUTPUT=$(timeout 180 $BINARY -bva -proof $PROOF_FILE $TEST_INPUT)
     NUM_TESTS=$((NUM_TESTS+1))
+    if [[ $? -eq 124 ]]; then
+        echo -e "[${RED}FAILED${NC}] $TEST_INPUT: Timed out after 3 minutes."
+        FAILED=$((FAILED+1))
+        continue
+    fi
+
     if [[ ! $OUTPUT == *"UNSAT"* ]]; then
         echo -e "[${RED}FAILED${NC}] $TEST_INPUT: Unexpected result. Should be UNSAT."
         FAILED=$((FAILED+1))

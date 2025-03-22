@@ -4,7 +4,7 @@
 WORKDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # Create an alias to the binary file
-EDUSAT="$WORKDIR/build/edusat"
+EDUSAT="$WORKDIR/build/release/edusat"
 echo "Creating alias to the binary..."
 alias edusat="$EDUSAT"
 echo "Alias 'edusat' created successfully!"

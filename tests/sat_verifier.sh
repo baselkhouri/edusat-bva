@@ -59,8 +59,15 @@ TMP_CNF="tmp.cnf"
 
 # Loop through the files safely
 while IFS= read -r TEST_INPUT; do
-    OUTPUT=$($BINARY $TEST_INPUT)
     NUM_TESTS=$((NUM_TESTS+1))
+    OUTPUT=$($BINARY -bva $TEST_INPUT)
+
+    if [[ $? -eq 124 ]]; then
+        echo -e "[${RED}TIMEOUT${NC}] $TEST_INPUT: Timed out after 3 minutes."
+        FAILED=$((FAILED+1))
+        continue
+    fi
+
     # If the output contains UNSAT or TIMEOUT
     if [[ $OUTPUT == *"UNSAT"* || $OUTPUT == *"TIMEOUT"* ]]; then
         echo -e "[${RED}FAILED${NC}] $TEST_INPUT: Unexpected result. Should be SAT."
@@ -90,6 +97,8 @@ while IFS= read -r TEST_INPUT; do
     done < "$ASS_FILE"
 
     # Change the number of clauses in the problem line by an extra VARS
+    #! Assignment file could contain lines with 0 (Unassigned vars).
+    #! These variables don't appear in the CNF, currently, these lines cause a problem
     perl -i -p -e "s/^p cnf $VARS $CLAUSES/p cnf $VARS $((CLAUSES + VARS))/" "$TMP_CNF"
     
     # Give TMP_CNF to cadical, the output should be SATISFIABLE
