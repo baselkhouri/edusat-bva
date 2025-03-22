@@ -60,7 +60,7 @@ namespace BVA
     void AutomatedReencoder::enlarge_marks(int64_t idx)
     {
         assert(0 < idx), assert(idx <= INT_MAX);
-        assert(idx > max_var);
+
         int64_t new_size_vars = size_vars ? 2 * size_vars : 2;
         while (idx >= new_size_vars)
             new_size_vars *= 2;
