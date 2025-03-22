@@ -2,7 +2,11 @@
 
 ## About
 
+<div id="top" align="center">
+
 This project was developed by **Thomas Hashem** and **Basel Khouri** as part of the course **"Algorithms in Logic - 00960265"** taught by **Prof. Ofer Strichman**.
+
+</div>
 
 The project implements Simple Bounded Variable Addition (BVA) into the EDUSAT SAT solver. It is designed to be modular and can be integrated into other SAT solvers. The algorithm is based on the paper [Automated Reencoding of Boolean Formulas](https://research.ibm.com/haifa/conferences/hvc2012/papers/paper16.pdf).
 
