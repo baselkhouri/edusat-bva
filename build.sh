@@ -7,17 +7,6 @@ WORKDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 echo "Building Edusat..."
 make -C "$WORKDIR"
 
-# Set executable paths
-EDUSAT="$WORKDIR/build/edusat"
-CADICAL="$WORKDIR/extern/cadical/build/cadical"
-DRATTRIM="$WORKDIR/extern/drat-trim/drat-trim"
-
-# Export executables (instead of aliases)
-echo "Setting up environment variables..."
-alias edusat="$EDUSAT"
-alias cadical="$CADICAL"
-alias drat-trim="$DRATTRIM"
-
 # Build CaDiCaL only if needed
 if [ ! -f "$CADICAL" ]; then
     echo "Building CaDiCaL..."

@@ -39,7 +39,7 @@ for file in "$INPUT_DIR"/*.cnf; do
     elif echo "$result" | grep -q "SATISFIABLE"; then
         new_name="${file%.cnf}_yes.cnf"
     else
-        new_name="${file%.cnf}_unknown.cnf"
+        new_name="${file%.cnf}_un.cnf"
     fi
 
     cp "$file" "$OUTPUT_DIR/$(basename "$new_name")"
