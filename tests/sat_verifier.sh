@@ -60,7 +60,7 @@ TMP_CNF="tmp.cnf"
 # Loop through the files safely
 while IFS= read -r TEST_INPUT; do
     NUM_TESTS=$((NUM_TESTS+1))
-    OUTPUT=$($BINARY -bva $TEST_INPUT)
+    OUTPUT=$(timeout 180 $BINARY -bva $TEST_INPUT)
 
     if [[ $? -eq 124 ]]; then
         echo -e "[${RED}TIMEOUT${NC}] $TEST_INPUT: Timed out after 3 minutes."

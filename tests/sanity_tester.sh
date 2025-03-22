@@ -45,7 +45,7 @@ fi
 
 # Loop through the files safely
 while IFS= read -r TEST_INPUT; do
-    OUTPUT=$($BINARY $TEST_INPUT)
+    OUTPUT=$($BINARY -bva $TEST_INPUT)
     NUM_TESTS=$((NUM_TESTS+1))
     if [[ $OUTPUT == *"UNSAT"* ]]; then
         if [[ $TEST_INPUT == *"yes"* ]]; then

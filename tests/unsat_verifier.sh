@@ -55,8 +55,8 @@ else
 fi
 # Loop through the files safely
 while IFS= read -r TEST_INPUT; do
-    OUTPUT=$(timeout 180 $BINARY -bva -proof $PROOF_FILE $TEST_INPUT)
     NUM_TESTS=$((NUM_TESTS+1))
+    OUTPUT=$(timeout 180 $BINARY -bva -proof $PROOF_FILE $TEST_INPUT)
     if [[ $? -eq 124 ]]; then
         echo -e "[${RED}FAILED${NC}] $TEST_INPUT: Timed out after 3 minutes."
         FAILED=$((FAILED+1))
