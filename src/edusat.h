@@ -123,7 +123,7 @@ void AssertCheck(bool cond, string func_name, int line, string msg = "") {
 }
 
 
-bool match(ifstream& in, const char* str) {
+bool match(ifstream& in, char* str) {
     for (; *str != '\0'; ++str)
         if (*str != in.get())
             return false;
